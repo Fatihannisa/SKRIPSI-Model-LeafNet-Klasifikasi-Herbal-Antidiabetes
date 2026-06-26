@@ -1,7 +1,7 @@
 import streamlit as st
 import numpy as np
 from PIL import Image
-import tensorflow as tf
+from tflite_runtime.interpreter import Interpreter
 import streamlit.components.v1 as components
 import base64
 import cv2
@@ -16,7 +16,7 @@ def load_base64(path):
 # =========================
 @st.cache_resource
 def load_tflite_model():
-    interpreter = tf.lite.Interpreter(
+    interpreter = Interpreter(
         model_path="leafnet_dual_branch.tflite"
     )
 
