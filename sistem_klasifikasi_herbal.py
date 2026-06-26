@@ -15,17 +15,19 @@ def load_base64(path):
 # ----- LOAD MODEL --------
 # =========================
 @st.cache_resource
-def load_model():
-    return tf.keras.models.load_model(
-        "leafnet_dual_branch.keras",
-        compile=False
+def load_tflite_model():
+    interpreter = tf.lite.Interpreter(
+        model_path="leafnet_dual_branch.tflite"
     )
 
-model = load_model()
+    interpreter.allocate_tensors()
 
-st.write("Input model:")
-for x in model.inputs:
-    st.write(x.name, x.shape)
+    return interpreter
+
+interpreter = load_tflite_model()
+
+input_details = interpreter.get_input_details()
+output_details = interpreter.get_output_details()
 
 LABELS = [
     "Acalypha siamensis", "Andrographis paniculata", "Cananga odorata", "Capsicum sp", "Catharanthus roseus",
@@ -301,12 +303,20 @@ def predict(image):
     rgb_input = make_rgb_input(image)
     vein_input = make_vein_input(image)
 
-    pred = model.predict(
-        {
-            "rgb_input": rgb_input,
-            "vein_input": vein_input
-        },
-        verbose=0
+    interpreter.set_tensor(
+        input_details[0]["index"],
+        rgb_input.astype(np.float32)
+    )
+
+    interpreter.set_tensor(
+        input_details[1]["index"],
+        vein_input.astype(np.float32)
+    )
+
+    interpreter.invoke()
+
+    pred = interpreter.get_tensor(
+        output_details[0]["index"]
     )[0]
 
     top_idx = np.argsort(pred)[::-1]
