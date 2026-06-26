@@ -1,8 +1,0 @@
-streamlit
-tensorflow
-numpy
-opencv-python-headless
-pilloe
-rembg
-onnxruntime
-scikit-image
