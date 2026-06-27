@@ -17,14 +17,24 @@ def load_base64(path):
 # =========================
 @st.cache_resource
 def load_tflite():
-
     interpreter = tf.lite.Interpreter(
         model_path="leafnet_dual_branch.tflite"
     )
-
     interpreter.allocate_tensors()
-
     return interpreter
+    
+try:
+    interpreter = load_tflite()
+    st.write("INPUT DETAILS:")
+    st.write(interpreter.get_input_details())
+    st.write("OUTPUT DETAILS:")
+    st.write(interpreter.get_output_details())
+    print(interpreter.get_input_details())
+    print(interpreter.get_output_details())
+    st.success("Model TFLite berhasil dimuat")
+except Exception as e:
+    st.exception(e)
+    st.stop()
 
 LABELS = [
     "Acalypha siamensis", "Andrographis paniculata", "Cananga odorata", "Capsicum sp", "Catharanthus roseus",
