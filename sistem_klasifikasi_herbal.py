@@ -16,16 +16,16 @@ def load_base64(path):
 # =========================
 @st.cache_resource
 def load_model():
-    return tf.keras.models.load_model(
+    model = tf.keras.models.load_model(
         "leafnet_dual_branch.keras",
         compile=False
     )
     return model
 try:
     model = load_model()
-    st.succes("Model berhasil dimuat")
+    st.success("Model berhasil dimuat")
 except Exception as e:
-    st.error(f"Error load model: {e}")
+    st.exception(e)
     st.stop()
 
 LABELS = [
