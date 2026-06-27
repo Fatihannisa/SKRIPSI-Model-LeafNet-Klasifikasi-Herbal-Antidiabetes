@@ -458,20 +458,20 @@ def predict(image):
         0
     ).astype(np.float32)
 
-    # DEBUG
-    st.write("RGB Input Shape:", rgb_input.shape)
-    st.write("Vein Input Shape:", vein_input.shape)
+    # # DEBUG
+    # st.write("RGB Input Shape:", rgb_input.shape)
+    # st.write("Vein Input Shape:", vein_input.shape)
 
-    st.image(
-        ((rgb_input[0] * np.array([0.229,0.224,0.225])
-          + np.array([0.485,0.456,0.406])) * 255).astype(np.uint8),
-        caption="RGB Branch Input"
-    )
+    # st.image(
+    #     ((rgb_input[0] * np.array([0.229,0.224,0.225])
+    #       + np.array([0.485,0.456,0.406])) * 255).astype(np.uint8),
+    #     caption="RGB Branch Input"
+    # )
 
-    st.image(
-        (vein_input[0] * 255).astype(np.uint8),
-        caption="Vein Branch Input"
-    )
+    # st.image(
+    #     (vein_input[0] * 255).astype(np.uint8),
+    #     caption="Vein Branch Input"
+    # )
 
     input_details = interpreter.get_input_details()
     output_details = interpreter.get_output_details()
