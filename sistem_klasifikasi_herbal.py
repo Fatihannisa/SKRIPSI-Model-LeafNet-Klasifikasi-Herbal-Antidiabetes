@@ -6,6 +6,8 @@ import streamlit.components.v1 as components
 import base64
 import cv2
 import os
+import io
+from rembg import remove
 
 def load_base64(path):
     with open(path, "rb") as f:
@@ -355,6 +357,10 @@ def predict(image):
             )
         )
 
+    st.write("RGB shape:", rgb_input.shape)
+    st.write("VEIN shape:", vein_input.shape)
+    st.image(processed, caption="Processed Image")
+
     return top5
 
 # =========================
@@ -614,6 +620,7 @@ elif st.session_state.page == "result":
     """, unsafe_allow_html=True)
 
     img = Image.open(st.session_state.image)
+    st.write("Nama file:", st.session_state.image.name)
     
     # DEBUG
     st.write("Original size:", img.size)
