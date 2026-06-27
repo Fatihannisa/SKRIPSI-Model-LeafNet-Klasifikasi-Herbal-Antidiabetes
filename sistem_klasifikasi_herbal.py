@@ -25,13 +25,6 @@ def load_tflite():
     
 try:
     interpreter = load_tflite()
-    st.write("INPUT DETAILS:")
-    st.write(interpreter.get_input_details())
-    st.write("OUTPUT DETAILS:")
-    st.write(interpreter.get_output_details())
-    print(interpreter.get_input_details())
-    print(interpreter.get_output_details())
-    st.success("Model TFLite berhasil dimuat")
 except Exception as e:
     st.exception(e)
     st.stop()
