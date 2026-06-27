@@ -7,11 +7,6 @@ import base64
 import cv2
 import os
 
-st.write(
-    "TFLite size:",
-    os.path.getsize("leafnet_dual_branch.tflite")
-)
-
 def load_base64(path):
     with open(path, "rb") as f:
         data = f.read()
@@ -38,9 +33,6 @@ try:
 except Exception as e:
     st.exception(e)
     st.stop()
-
-input_details = interpreter.get_input_details()
-st.write(input_details)
 
 LABELS = [
     "Acalypha siamensis", "Andrographis paniculata", "Cananga odorata", "Capsicum sp", "Catharanthus roseus",
