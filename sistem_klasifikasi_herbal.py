@@ -671,21 +671,22 @@ elif st.session_state.page == "result":
     # KOLOM B — STATUS + CONFIDENCE (KANAN)
     # =====================================
     with colB:
-        st.markdown(f"""
-            <div class="adaptive-box">
-                <b class='section-title'>Status</b><br>
-                <b style="color:#018790; font-weight:400;">
-                    {data['status'] if data else "Bukan herbal antidiabetes"}
-                </b><br><br>
-                <b>Tingkat kepercayaan sistem:</b>
-                <b style="color:#018790;">
-                    {conf * 100:.2f}%
-                </b>
-            </div>
-        """, unsafe_allow_html=True)
-        st.markdown("<div style='height:15px'></div>",
-                    unsafe_allow_html=True)
-        with st.container(border=True):
+    st.markdown(f"""
+        <div class="adaptive-box">
+            <b class='section-title'>Status</b><br>
+            <b style="color:#018790; font-weight:400;">
+                {data['status'] if data else "Bukan herbal antidiabetes"}
+            </b><br><br>
+            <b>Tingkat kepercayaan sistem:</b>
+            <b style="color:#018790;">
+                {conf * 100:.2f}%
+            </b>
+        </div>
+    """, unsafe_allow_html=True)
+    st.markdown("<div style='height:15px'></div>",
+                unsafe_allow_html=True)
+    
+    with st.container(border=True):
         st.markdown(
             "<b class='section-title'>Top-5 Prediksi</b>",
             unsafe_allow_html=True
