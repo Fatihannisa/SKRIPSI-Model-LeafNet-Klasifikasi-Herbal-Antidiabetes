@@ -15,15 +15,18 @@ def load_base64(path):
 # ----- LOAD MODEL --------
 # =========================
 @st.cache_resource
-def load_model():
-    model = tf.keras.models.load_model(
-        "leafnet_dual_branch.keras",
-        compile=False
+def load_tflite():
+    interpreter = tf.lite.Interpreter(
+        model_path="leafnet_dual_branch.tflite"
     )
-    return model
+
+    interpreter.allocate_tensors()
+
+    return interpreter
+
 try:
-    model = load_model()
-    st.success("Model berhasil dimuat")
+    interpreter = load_tflite()
+    st.success("Model TFLite berhasil dimuat")
 except Exception as e:
     st.exception(e)
     st.stop()
@@ -299,15 +302,26 @@ def make_vein_input(image):
 # =========================
 def predict(image):
 
-    rgb_input = make_rgb_input(image)
-    vein_input = make_vein_input(image)
+    rgb_input = make_rgb_input(image).astype(np.float32)
+    vein_input = make_vein_input(image).astype(np.float32)
 
-    pred = model.predict(
-        {
-            "rgb_input": rgb_input,
-            "vein_input": vein_input
-        },
-        verbose=0
+    input_details = interpreter.get_input_details()
+    output_details = interpreter.get_output_details()
+
+    interpreter.set_tensor(
+        input_details[0]["index"],
+        rgb_input
+    )
+
+    interpreter.set_tensor(
+        input_details[1]["index"],
+        vein_input
+    )
+
+    interpreter.invoke()
+
+    pred = interpreter.get_tensor(
+        output_details[0]["index"]
     )[0]
 
     top_idx = np.argsort(pred)[::-1]
