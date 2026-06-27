@@ -26,14 +26,6 @@ def load_tflite():
 
     return interpreter
 
-
-try:
-    interpreter = load_tflite()
-    st.success("Model TFLite berhasil dimuat")
-except Exception as e:
-    st.exception(e)
-    st.stop()
-
 LABELS = [
     "Acalypha siamensis", "Andrographis paniculata", "Cananga odorata", "Capsicum sp", "Catharanthus roseus",
     "Dracaena angustifolia", "Ficus microcarpa", "Flueggea virosa", "Gardenia jasminoides", "Leucaena leucocephala",
