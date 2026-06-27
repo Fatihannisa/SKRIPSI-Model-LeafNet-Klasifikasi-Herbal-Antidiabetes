@@ -764,21 +764,17 @@ if st.session_state.page == "upload":
 # === HALAMAN HASIL =====
 # =======================
 elif st.session_state.page == "result":
-
     st.markdown("""
         <h2 style="margin-bottom:30px; font-size:50px; font-weight:600; text-align:center;">
             Hasil Identifikasi
         </h2>
     """, unsafe_allow_html=True)
-    
+    img = Image.open(st.session_state.image)
     top5 = predict(img)
-
     pred_name = top5[0][0]
     conf = top5[0][1]
-
     # ambil data dari database
     data = herbal_info.get(pred_name, None)
-
     colA, colB = st.columns([1.5,1])
 
     # =====================================
