@@ -16,18 +16,34 @@ def load_base64(path):
 # =========================
 @st.cache_resource
 def load_tflite_model():
-    interpreter = Interpreter(
-        model_path="leafnet_dual_branch.tflite"
-    )
 
-    interpreter.allocate_tensors()
+    try:
+        interpreter = Interpreter(
+            model_path="leafnet_dual_branch.tflite"
+        )
 
-    return interpreter
+        interpreter.allocate_tensors()
+
+        st.success("Model TFLite berhasil dimuat")
+
+        return interpreter
+
+    except Exception as e:
+
+        st.error(f"Gagal load model: {e}")
+
+        raise e
 
 interpreter = load_tflite_model()
 
 input_details = interpreter.get_input_details()
 output_details = interpreter.get_output_details()
+
+st.write("INPUT DETAILS")
+st.write(input_details)
+
+st.write("OUTPUT DETAILS")
+st.write(output_details)
 
 LABELS = [
     "Acalypha siamensis", "Andrographis paniculata", "Cananga odorata", "Capsicum sp", "Catharanthus roseus",
