@@ -5,6 +5,7 @@ import tensorflow as tf
 import streamlit.components.v1 as components
 import base64
 import cv2
+import os
 
 def load_base64(path):
     with open(path, "rb") as f:
@@ -16,12 +17,17 @@ def load_base64(path):
 # =========================
 @st.cache_resource
 def load_model():
+    st.write("cwd =", os.getcwd())
+    for root, dirs, files in os.walk("."):
+        for f in files:
+            if ".keras" in f:
+                st.write("MODEL:", os.path.join(root, f))
     model = tf.keras.models.load_model(
         "leafnet_dual_branch.keras",
         compile=False
     )
     return model
-
+    
 try:
     model = load_model()
     st.success("Model berhasil dimuat")
