@@ -38,6 +38,14 @@ LABELS = [
     "Physalis angulata", "Rosa sp", "Solanum nigrum", "Syzygium polyanthum", "Vernonia amygdalina", "Ziziphus mauritiana"
 ]
 
+CONFIG = {
+    "IMG_SIZE": (256,256),
+    "TARGET_BRIGHTNESS": 145,
+    "CLAHE_CLIP": 3.5,
+    "CLAHE_TILE": (4,4),
+    "VEIN_STRENGTH": 1.2
+}
+
 # =========================
 # ----- DATABASE DINAMIS --------
 # =========================
@@ -103,27 +111,105 @@ herbal_info = {
     },
 }
 
-def get_leaf_mask(img):
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+# =========================================================
+# PREPROCESSING DATASET STYLE
+# =========================================================
+def _normalize_brightness(img):
+    lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB).astype(np.float32)
+    l, a, b = cv2.split(lab)
+    mean_l = l.mean()
+    if mean_l < 5:
+        return img
+    l_norm = np.clip(
+        l * (CONFIG["TARGET_BRIGHTNESS"] / mean_l),
+        0,
+        255
+    )
+    out = cv2.merge([
+        l_norm,
+        a,
+        b
+    ]).astype(np.uint8)
+    return cv2.cvtColor(out, cv2.COLOR_LAB2BGR)
 
-    _, mask = cv2.threshold(
-        gray,
-        240,
-        255,
-        cv2.THRESH_BINARY_INV
+def _clahe_lab(img):
+    lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
+    l, a, b = cv2.split(lab)
+    clahe = cv2.createCLAHE(
+        clipLimit=CONFIG["CLAHE_CLIP"],
+        tileGridSize=CONFIG["CLAHE_TILE"]
+    )
+    l = clahe.apply(l)
+    return cv2.cvtColor(
+        cv2.merge([l, a, b]),
+        cv2.COLOR_LAB2BGR
     )
 
+def _sharpen_veins(img):
+    blurred = cv2.GaussianBlur(
+        img,
+        (0,0),
+        sigmaX=3
+    )
+    s = CONFIG["VEIN_STRENGTH"]
+    sharp = cv2.addWeighted(
+        img,
+        1 + s,
+        blurred,
+        -s,
+        0
+    )
+    return np.clip(sharp, 0, 255).astype(np.uint8)
+
+def _clean_background(img, threshold=230):
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    img[gray > threshold] = [255,255,255]
+    return img
+
+# =========================================================
+# LEAF SEGMENTATION
+# =========================================================
+def get_leaf_mask(img):
+    # =========================================
+    # Resize copy
+    # =========================================
+    work = img.copy()
+    # =========================================
+    # HSV
+    # lebih stabil untuk daun hijau
+    # =========================================
+    hsv = cv2.cvtColor(work, cv2.COLOR_BGR2HSV)
+    # range hijau daun
+    lower = np.array([20, 20, 20])
+    upper = np.array([95, 255, 255])
+    mask = cv2.inRange(hsv, lower, upper)
+    # =========================================
+    # Morphology cleanup
+    # =========================================
+    kernel = np.ones((5,5), np.uint8)
+    mask = cv2.morphologyEx(
+        mask,
+        cv2.MORPH_CLOSE,
+        kernel,
+        iterations=2
+    )
+    mask = cv2.morphologyEx(
+        mask,
+        cv2.MORPH_OPEN,
+        kernel,
+        iterations=1
+    )
+    # =========================================
+    # Largest contour only
+    # =========================================
     contours, _ = cv2.findContours(
         mask,
         cv2.RETR_EXTERNAL,
         cv2.CHAIN_APPROX_SIMPLE
     )
-
+    clean_mask = np.zeros_like(mask)
     if len(contours) > 0:
         largest = max(contours, key=cv2.contourArea)
-
-        clean_mask = np.zeros_like(mask)
-
         cv2.drawContours(
             clean_mask,
             [largest],
@@ -131,106 +217,176 @@ def get_leaf_mask(img):
             255,
             -1
         )
-
-        mask = clean_mask
-
-    kernel = np.ones((5,5), np.uint8)
-
-    mask = cv2.morphologyEx(
-        mask,
-        cv2.MORPH_CLOSE,
-        kernel
+    # =========================================
+    # Smooth edge
+    # =========================================
+    clean_mask = cv2.GaussianBlur(
+        clean_mask,
+        (7,7),
+        0
     )
+    _, clean_mask = cv2.threshold(
+        clean_mask,
+        127,
+        255,
+        cv2.THRESH_BINARY
+    )
+    return clean_mask
 
-    return mask
-
-def make_rgb_input(image):
-
-    img = np.array(image.convert("RGB"))
-    img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-
-    img = cv2.resize(
-        img,
-        (256,256),
+# =========================================================
+# CAMERA -> DATASET STYLE
+# =========================================================
+def preprocess_camera_leaf(img):
+    # =====================================
+    # REMOVE BACKGROUND AI
+    # =====================================
+    _, buffer = cv2.imencode(".png", img)
+    output = remove(buffer.tobytes())
+    pil = Image.open(io.BytesIO(output)).convert("RGBA")
+    rgba = np.array(pil)
+    alpha = rgba[:, :, 3]
+    rgb = rgba[:, :, :3]
+    # =====================================
+    # MASK
+    # =====================================
+    mask = (alpha > 10).astype(np.uint8) * 255
+    # =====================================
+    # Largest contour
+    # =====================================
+    contours, _ = cv2.findContours(
+        mask,
+        cv2.RETR_EXTERNAL,
+        cv2.CHAIN_APPROX_SIMPLE
+    )
+    if len(contours) == 0:
+        # If no leaf detected by rembg, fall back to simple resize or original image handling
+        # For now, return the resized original image
+        return cv2.resize(img, CONFIG["IMG_SIZE"])
+    largest = max(contours, key=cv2.contourArea)
+    x, y, w, h = cv2.boundingRect(largest)
+    pad = 2
+    x1 = max(0, x - pad)
+    y1 = max(0, y - pad)
+    x2 = min(rgb.shape[1], x + w + pad)
+    y2 = min(rgb.shape[0], y + h + pad)
+    leaf_crop = rgb[y1:y2, x1:x2]
+    crop_mask = mask[y1:y2, x1:x2]
+    ys, xs = np.where(crop_mask > 0)
+    ymin, ymax = ys.min(), ys.max()
+    xmin, xmax = xs.min(), xs.max()
+    leaf_crop = leaf_crop[ymin:ymax, xmin:xmax]
+    crop_mask = crop_mask[ymin:ymax, xmin:xmax]
+    # =====================================
+    # WHITE BACKGROUND
+    # =====================================
+    canvas = np.ones_like(leaf_crop) * 255
+    canvas[crop_mask > 0] = leaf_crop[crop_mask > 0]
+    leaf_crop = canvas
+    # =========================================
+    # RESIZE AGRESIF
+    # =========================================
+    h, w = leaf_crop.shape[:2]
+    target = 250
+    scale = target / max(h, w)
+    new_w = int(w * scale)
+    new_h = int(h * scale)
+    leaf_crop = cv2.resize(
+        leaf_crop,
+        (new_w, new_h),
         interpolation=cv2.INTER_CUBIC
     )
-
+    # =========================================
+    # AUTO ZOOM TAMBAHAN
+    # =========================================
+    if new_w < 180 or new_h < 180:
+        extra_scale = 1.25
+        new_w = int(new_w * extra_scale)
+        new_h = int(new_h * extra_scale)
+        # prevent overflow
+        if new_w > 256 or new_h > 256:
+            ratio = min(256/new_w, 256/new_h) * 0.98
+            new_w = int(new_w * ratio)
+            new_h = int(new_h * ratio)
+        leaf_crop = cv2.resize(
+            leaf_crop,
+            (new_w, new_h),
+            interpolation=cv2.INTER_CUBIC
+        )
+    # =========================================
+    # PAD TO 256x256
+    # =========================================
+    final_img = np.ones((256, 256, 3), dtype=np.uint8) * 255
+    x_offset = (256 - leaf_crop.shape[1]) // 2
+    y_offset = (256 - leaf_crop.shape[0]) // 2
+    final_img[
+        y_offset : y_offset + leaf_crop.shape[0],
+        x_offset : x_offset + leaf_crop.shape[1]
+    ] = leaf_crop
+    # =====================================
+    # DATASET STYLE
+    # =====================================
+    final_img = _normalize_brightness(final_img)
+    final_img = _clahe_lab(final_img)
+    final_img = _sharpen_veins(final_img)
+    return final_img
+    
+# =========================================================
+# RGB INPUT
+# =========================================================
+def to_rgb_input(img):
+    img = cv2.resize(
+        img,
+        CONFIG["IMG_SIZE"],
+        interpolation=cv2.INTER_CUBIC
+    )
     mask = get_leaf_mask(img)
-
-    img[mask == 0] = 0
-
+    img[mask == 0] = [240, 240, 240]
     img = cv2.cvtColor(
         img,
         cv2.COLOR_BGR2RGB
     ).astype(np.float32)
-
-    mean = np.array(
-        [0.485,0.456,0.406]
-    ) * 255
-
-    std = np.array(
-        [0.229,0.224,0.225]
-    ) * 255
-
+    mean = np.array([0.485, 0.456, 0.406]) * 255
+    std  = np.array([0.229, 0.224, 0.225]) * 255
     img = (img - mean) / std
+    return img
 
-    return np.expand_dims(img,0)
-
-def make_vein_input(image):
-
-    img = np.array(image.convert("RGB"))
-    img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-
+# =========================================================
+# VEIN INPUT
+# =========================================================
+def to_vein_input(img):
     img = cv2.resize(
         img,
-        (256,256),
+        CONFIG["IMG_SIZE"],
         interpolation=cv2.INTER_CUBIC
     )
-
     mask = get_leaf_mask(img)
-
-    gray = cv2.cvtColor(
-        img,
-        cv2.COLOR_BGR2GRAY
-    )
-
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     gray = cv2.bitwise_and(
         gray,
         gray,
         mask=mask
     )
-
-    gray = cv2.GaussianBlur(
-        gray,
-        (5,5),
-        0
-    )
-
+    gray = cv2.GaussianBlur(gray, (5,5), 0)
     clahe = cv2.createCLAHE(
         clipLimit=2.0,
         tileGridSize=(8,8)
     )
-
     vein = clahe.apply(gray)
-
     vein = cv2.bilateralFilter(
         vein,
-        7,
-        50,
-        50
+        d=7,
+        sigmaColor=50,
+        sigmaSpace=50
     )
-
     blur_large = cv2.GaussianBlur(
         vein,
         (21,21),
         0
     )
-
     highpass = cv2.subtract(
         vein,
         (blur_large * 0.7).astype(np.uint8)
     )
-
     sobelx = cv2.Sobel(
         highpass,
         cv2.CV_32F,
@@ -238,7 +394,6 @@ def make_vein_input(image):
         0,
         ksize=3
     )
-
     sobely = cv2.Sobel(
         highpass,
         cv2.CV_32F,
@@ -246,12 +401,7 @@ def make_vein_input(image):
         1,
         ksize=3
     )
-
-    sobel = cv2.magnitude(
-        sobelx,
-        sobely
-    )
-
+    sobel = cv2.magnitude(sobelx, sobely)
     sobel = cv2.normalize(
         sobel,
         None,
@@ -259,7 +409,6 @@ def make_vein_input(image):
         255,
         cv2.NORM_MINMAX
     ).astype(np.uint8)
-
     vein = cv2.addWeighted(
         highpass,
         0.45,
@@ -267,7 +416,6 @@ def make_vein_input(image):
         0.75,
         0
     )
-
     vein = cv2.normalize(
         vein,
         None,
@@ -275,35 +423,40 @@ def make_vein_input(image):
         255,
         cv2.NORM_MINMAX
     )
-
     _, vein = cv2.threshold(
         vein,
         35,
         255,
         cv2.THRESH_TOZERO
     )
-
     vein[mask == 0] = 0
-
     vein = vein.astype(np.float32) / 255.0
-
     vein = np.stack(
         [vein, vein, vein],
         axis=-1
     )
-
-    return np.expand_dims(
-        vein,
-        0
-    )
+    return vein
     
 # =========================
 # ----- PREDIKSI ---
 # =========================
 def predict(image):
-
-    rgb_input = make_rgb_input(image).astype(np.float32)
-    vein_input = make_vein_input(image).astype(np.float32)
+    img = np.array(image.convert("RGB"))
+    img = cv2.cvtColor(
+        img,
+        cv2.COLOR_RGB2BGR
+    )
+    processed = preprocess_camera_leaf(img)
+    rgb_input = to_rgb_input(processed)
+    vein_input = to_vein_input(processed)
+    rgb_input = np.expand_dims(
+        rgb_input,
+        0
+    ).astype(np.float32)
+    vein_input = np.expand_dims(
+        vein_input,
+        0
+    ).astype(np.float32)
 
     # DEBUG
     st.write("RGB Input Shape:", rgb_input.shape)
@@ -324,29 +477,32 @@ def predict(image):
     output_details = interpreter.get_output_details()
 
     for inp in input_details:
-
         name = inp["name"].lower()
-
         if "rgb" in name:
             interpreter.set_tensor(
                 inp["index"],
                 rgb_input
             )
-
         elif "vein" in name:
             interpreter.set_tensor(
                 inp["index"],
                 vein_input
             )
+            
+    st.image(
+        cv2.cvtColor(
+            processed,
+            cv2.COLOR_BGR2RGB
+        ),
+        caption="Processed Image"
+    )
 
     interpreter.invoke()
 
     pred = interpreter.get_tensor(
         output_details[0]["index"]
     )[0]
-
     top_idx = np.argsort(pred)[::-1]
-
     top5 = []
 
     for idx in top_idx[:5]:
@@ -356,10 +512,6 @@ def predict(image):
                 float(pred[idx])
             )
         )
-
-    st.write("RGB shape:", rgb_input.shape)
-    st.write("VEIN shape:", vein_input.shape)
-    st.image(processed, caption="Processed Image")
 
     return top5
 
