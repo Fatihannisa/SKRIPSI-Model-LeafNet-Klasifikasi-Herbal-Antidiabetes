@@ -20,8 +20,13 @@ def load_model():
         "leafnet_dual_branch.keras",
         compile=False
     )
-
-model = load_model()
+    return model
+try:
+    model = load_model()
+    st.succes("Model berhasil dimuat")
+except Exception as e:
+    st.error(f"Error load model: {e}")
+    st.stop()
 
 LABELS = [
     "Acalypha siamensis", "Andrographis paniculata", "Cananga odorata", "Capsicum sp", "Catharanthus roseus",
