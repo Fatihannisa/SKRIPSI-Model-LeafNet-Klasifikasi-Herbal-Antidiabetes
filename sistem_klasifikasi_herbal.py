@@ -303,6 +303,21 @@ def predict(image):
     rgb_input = make_rgb_input(image).astype(np.float32)
     vein_input = make_vein_input(image).astype(np.float32)
 
+    # DEBUG
+    st.write("RGB Input Shape:", rgb_input.shape)
+    st.write("Vein Input Shape:", vein_input.shape)
+
+    st.image(
+        ((rgb_input[0] * np.array([0.229,0.224,0.225])
+          + np.array([0.485,0.456,0.406])) * 255).astype(np.uint8),
+        caption="RGB Branch Input"
+    )
+
+    st.image(
+        (vein_input[0] * 255).astype(np.uint8),
+        caption="Vein Branch Input"
+    )
+
     input_details = interpreter.get_input_details()
     output_details = interpreter.get_output_details()
 
@@ -599,6 +614,11 @@ elif st.session_state.page == "result":
     """, unsafe_allow_html=True)
 
     img = Image.open(st.session_state.image)
+    
+    # DEBUG
+    st.write("Original size:", img.size)
+    st.image(img, caption="Original Upload")
+    
     top5 = predict(img)
 
     pred_name = top5[0][0]
