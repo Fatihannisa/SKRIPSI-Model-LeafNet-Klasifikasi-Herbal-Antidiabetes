@@ -679,16 +679,11 @@ elif st.session_state.page == "result":
                 <b style="color:#018790;">{conf * 100:.2f}% </b>
             </div>
         """, unsafe_allow_html=True)
-        st.markdown(status_box, unsafe_allow_html=True)
         st.markdown("<br>", unsafe_allow_html=True)
-        st.markdown("""
-        <div class="adaptive-box">
-        """, unsafe_allow_html=True)
         st.markdown("### Top-5 Prediksi")
         for i, (label, score) in enumerate(top5, 1):
             st.write(f"{i}. {label} — {score*100:.2f}%")
             st.progress(float(score))
-        st.markdown("</div>", unsafe_allow_html=True)
 
     # === Informasi ===
     st.markdown("<div class='section-title'>Informasi herbal:</div>", unsafe_allow_html=True)
