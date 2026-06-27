@@ -770,13 +770,6 @@ elif st.session_state.page == "result":
             Hasil Identifikasi
         </h2>
     """, unsafe_allow_html=True)
-
-    img = Image.open(st.session_state.image)
-    st.write("Nama file:", st.session_state.image.name)
-    
-    # DEBUG
-    st.write("Original size:", img.size)
-    st.image(img, caption="Original Upload")
     
     top5 = predict(img)
 
