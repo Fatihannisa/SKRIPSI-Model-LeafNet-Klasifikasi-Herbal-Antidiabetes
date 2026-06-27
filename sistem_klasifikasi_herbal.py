@@ -1,7 +1,7 @@
 import streamlit as st
 import numpy as np
 from PIL import Image
-from tflite_runtime.interpreter import Interpreter
+import tensorflow as tf
 import streamlit.components.v1 as components
 import base64
 import cv2
@@ -15,35 +15,13 @@ def load_base64(path):
 # ----- LOAD MODEL --------
 # =========================
 @st.cache_resource
-def load_tflite_model():
+def load_model():
+    return tf.keras.models.load_model(
+        "leafnet_dual_branch.keras",
+        compile=False
+    )
 
-    try:
-        interpreter = Interpreter(
-            model_path="leafnet_dual_branch.tflite"
-        )
-
-        interpreter.allocate_tensors()
-
-        st.success("Model TFLite berhasil dimuat")
-
-        return interpreter
-
-    except Exception as e:
-
-        st.error(f"Gagal load model: {e}")
-
-        raise e
-
-interpreter = load_tflite_model()
-
-input_details = interpreter.get_input_details()
-output_details = interpreter.get_output_details()
-
-st.write("INPUT DETAILS")
-st.write(input_details)
-
-st.write("OUTPUT DETAILS")
-st.write(output_details)
+model = load_model()
 
 LABELS = [
     "Acalypha siamensis", "Andrographis paniculata", "Cananga odorata", "Capsicum sp", "Catharanthus roseus",
@@ -319,20 +297,12 @@ def predict(image):
     rgb_input = make_rgb_input(image)
     vein_input = make_vein_input(image)
 
-    interpreter.set_tensor(
-        input_details[0]["index"],
-        rgb_input.astype(np.float32)
-    )
-
-    interpreter.set_tensor(
-        input_details[1]["index"],
-        vein_input.astype(np.float32)
-    )
-
-    interpreter.invoke()
-
-    pred = interpreter.get_tensor(
-        output_details[0]["index"]
+    pred = model.predict(
+        {
+            "rgb_input": rgb_input,
+            "vein_input": vein_input
+        },
+        verbose=0
     )[0]
 
     top_idx = np.argsort(pred)[::-1]
