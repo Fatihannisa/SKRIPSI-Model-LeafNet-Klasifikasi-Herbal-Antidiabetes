@@ -489,13 +489,13 @@ def predict(image):
                 vein_input
             )
             
-    st.image(
-        cv2.cvtColor(
-            processed,
-            cv2.COLOR_BGR2RGB
-        ),
-        caption="Processed Image"
-    )
+    # st.image(
+    #     cv2.cvtColor(
+    #         processed,
+    #         cv2.COLOR_BGR2RGB
+    #     ),
+    #     caption="Processed Image"
+    # )
 
     interpreter.invoke()
 
