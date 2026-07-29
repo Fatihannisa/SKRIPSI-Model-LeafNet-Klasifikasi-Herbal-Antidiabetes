@@ -1,5 +1,8 @@
 streamlit
-tensorflow-cpu==2.16.1
+tensorflow
+tflite-runtime
 numpy
 opencv-python-headless
 Pillow
+rembg
+onnxruntime
