@@ -447,6 +447,11 @@ html, body, [class*="css"] {
     font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
+/* Background Soft Herbal Gradient */
+.stApp {
+    background: linear-gradient(135deg, #f2f7f4 0%, #ecf3ee 50%, #e6efe9 100%) !important;
+}
+
 /* Card Container Modern */
 .custom-card {
     background-color: #ffffff;
