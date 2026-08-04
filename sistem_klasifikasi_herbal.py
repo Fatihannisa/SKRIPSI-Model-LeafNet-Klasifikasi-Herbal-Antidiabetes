@@ -515,6 +515,51 @@ html, body, [class*="css"] {
     margin-top: 30px;
 }
 
+/* Custom Green Primary Button (NO RED) */
+div.stButton > button[kind="primary"],
+div.stButton > button {
+    background-color: #065f46 !important;
+    color: #ffffff !important;
+    border: none !important;
+    border-radius: 12px !important;
+    padding: 12px 24px !important;
+    font-weight: 700 !important;
+    font-size: 15px !important;
+    transition: background-color 0.2s ease, transform 0.1s ease !important;
+    box-shadow: 0 4px 12px rgba(6, 95, 70, 0.25) !important;
+}
+div.stButton > button[kind="primary"]:hover,
+div.stButton > button:hover {
+    background-color: #044e39 !important;
+    color: #ffffff !important;
+    border: none !important;
+}
+
+/* File Uploader Square Dropzone Box Styling */
+div[data-testid="stFileUploader"] {
+    background-color: #f0fdf4 !important;
+    border: 2px dashed #0d9488 !important;
+    border-radius: 20px !important;
+    padding: 24px !important;
+    min-height: 220px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
+    text-align: center !important;
+}
+div[data-testid="stFileUploader"] section {
+    background-color: transparent !important;
+    padding: 12px !important;
+}
+div[data-testid="stFileUploader"] button {
+    background-color: #ecfdf5 !important;
+    color: #065f46 !important;
+    border: 1px solid #a7f3d0 !important;
+    font-weight: 700 !important;
+    border-radius: 10px !important;
+}
+
 /* Footer */
 .footer-text {
     text-align: center;
