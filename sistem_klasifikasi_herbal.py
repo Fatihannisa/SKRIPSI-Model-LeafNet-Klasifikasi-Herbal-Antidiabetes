@@ -696,15 +696,17 @@ elif st.session_state.page == "result":
 
     # KANAN & KIRI ATAS
     with colA:
-        # Outer card container box & Inner leaf image container
-        st.markdown("""
-            <div class="custom-card" style="text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px;">
-                <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; display: flex; align-items: center; justify-content: center; width: 100%; min-height: 260px;">
-        """, unsafe_allow_html=True)
-        st.image(img_input, caption="", width=300)
-        st.markdown("""
+        # Convert PIL Image to Base64 to render cleanly inside single HTML block
+        buffered = io.BytesIO()
+        img_input.save(buffered, format="PNG")
+        img_b64 = base64.b64encode(buffered.getvalue()).decode()
+
+        st.markdown(f"""
+            <div class="custom-card" style="text-align: center; padding: 24px;">
+                <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; display: flex; align-items: center; justify-content: center; width: 100%; min-height: 280px;">
+                    <img src="data:image/png;base64,{img_b64}" style="max-height: 250px; max-width: 100%; object-fit: contain; border-radius: 8px; margin: 0 auto; display: block;">
                 </div>
-                <p style="font-size: 12px; color: #94a3b8; font-style: italic; margin-top: 12px; margin-bottom: 0;">Gambar yang Diunggah</p>
+                <p style="font-size: 13px; color: #94a3b8; font-style: italic; margin-top: 14px; margin-bottom: 0; font-weight: 500;">Gambar yang Diunggah</p>
             </div>
         """, unsafe_allow_html=True)
 
