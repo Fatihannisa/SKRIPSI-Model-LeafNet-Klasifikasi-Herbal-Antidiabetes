@@ -68,7 +68,7 @@ herbal_info = {
         "tautan_artikel": "",
         "tautan_jurnal": "",
         "cara_mengolah": [],
-        "catatan": "Tanaman ini <strong>bukan</strong> merupakan tanaman herbal antidiabetes."
+        "catatan": "Tanaman ini **bukan** merupakan tanaman herbal antidiabetes."
     },
     "Andrographis paniculata": {
         "nama_umum": ["Sambiloto", "Ki pait", "Ampadu tanah", "Ki oray"],
@@ -91,7 +91,7 @@ herbal_info = {
         "tautan_artikel": "",
         "tautan_jurnal": "",
         "cara_mengolah": [],
-        "catatan": "Tanaman ini <strong>bukan</strong> merupakan tanaman herbal antidiabetes."
+        "catatan": "Tanaman ini **bukan** merupakan tanaman herbal antidiabetes."
     },
     "Capsicum sp": {
         "nama_umum": ["Cabai", "Lombok"],
@@ -100,7 +100,7 @@ herbal_info = {
         "tautan_artikel": "",
         "tautan_jurnal": "",
         "cara_mengolah": [],
-        "catatan": "Tanaman ini <strong>bukan</strong> merupakan tanaman herbal antidiabetes."
+        "catatan": "Tanaman ini **bukan** merupakan tanaman herbal antidiabetes."
     },
     "Catharanthus roseus": {
         "nama_umum": ["Tapak dara", "Bunga serdadu", "Kembang tembaga"],
@@ -123,7 +123,7 @@ herbal_info = {
         "tautan_artikel": "",
         "tautan_jurnal": "",
         "cara_mengolah": [],
-        "catatan": "Tanaman ini <strong>bukan</strong> merupakan tanaman herbal antidiabetes."
+        "catatan": "Tanaman ini **bukan** merupakan tanaman herbal antidiabetes."
     },
     "Ficus microcarpa": {
         "nama_umum": ["Beringin dolar", "Beringin cina"],
@@ -132,7 +132,7 @@ herbal_info = {
         "tautan_artikel": "",
         "tautan_jurnal": "",
         "cara_mengolah": [],
-        "catatan": "Tanaman ini <strong>bukan</strong> merupakan tanaman herbal antidiabetes."
+        "catatan": "Tanaman ini **bukan** merupakan tanaman herbal antidiabetes."
     },
     "Flueggea virosa": {
         "nama_umum": ["Sigar jalak", "Trembilutan"],
@@ -141,7 +141,7 @@ herbal_info = {
         "tautan_artikel": "",
         "tautan_jurnal": "",
         "cara_mengolah": [],
-        "catatan": "Tanaman ini <strong>bukan</strong> merupakan tanaman herbal antidiabetes."
+        "catatan": "Tanaman ini **bukan** merupakan tanaman herbal antidiabetes."
     },
     "Gardenia jasminoides": {
         "nama_umum": ["Kaca piring", "Melati tanjung"],
@@ -150,7 +150,7 @@ herbal_info = {
         "tautan_artikel": "",
         "tautan_jurnal": "",
         "cara_mengolah": [],
-        "catatan": "Tanaman ini <strong>bukan</strong> merupakan tanaman herbal antidiabetes."
+        "catatan": "Tanaman ini **bukan** merupakan tanaman herbal antidiabetes."
     },
     "Leucaena leucocephala": {
         "nama_umum": ["Lamtoro", "Petai cina"],
@@ -159,7 +159,7 @@ herbal_info = {
         "tautan_artikel": "",
         "tautan_jurnal": "",
         "cara_mengolah": [],
-        "catatan": "Tanaman ini <strong>bukan</strong> merupakan tanaman herbal antidiabetes."
+        "catatan": "Tanaman ini **bukan** merupakan tanaman herbal antidiabetes."
     },
     "Moringa oleifera": {
         "nama_umum": ["Kelor", "Merunggai"],
@@ -238,7 +238,7 @@ herbal_info = {
         "tautan_artikel": "",
         "tautan_jurnal": "",
         "cara_mengolah": [],
-        "catatan": "Tanaman ini <strong>bukan</strong> merupakan tanaman herbal antidiabetes."
+        "catatan": "Tanaman ini **bukan** merupakan tanaman herbal antidiabetes."
     },
     "Solanum nigrum": {
         "nama_umum": ["Ranti", "Leunca"],
@@ -247,7 +247,7 @@ herbal_info = {
         "tautan_artikel": "",
         "tautan_jurnal": "",
         "cara_mengolah": [],
-        "catatan": "Tanaman ini <strong>bukan</strong> merupakan tanaman herbal antidiabetes."
+        "catatan": "Tanaman ini **bukan** merupakan tanaman herbal antidiabetes."
     },
     "Syzygium polyanthum": {
         "nama_umum": ["Salam", "Manting", "Ubar serai"],
@@ -613,9 +613,9 @@ if st.session_state.page == "upload":
     # Hero Banner
     st.markdown("""
         <div style="background: linear-gradient(135deg, #064e3b 0%, #0d9488 100%); padding: 36px; border-radius: 20px; color: white; margin-bottom: 30px;">
-            <span style="background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 20px; font-size: 13px; font-weight: 700;">
-                MODEL LEAFNET DUAL-BRANCH
-            </span>
+            # <span style="background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 20px; font-size: 13px; font-weight: 700;">
+                3 MODEL LEAFNET DUAL-BRANCH
+            # </span>
             <h1 style="font-family:'Playfair Display', serif; font-size: 34px; font-weight: 700; margin-top: 12px; margin-bottom: 12px; color: #f0fdf4;">
                 Sistem Identifikasi Daun Herbal Antidiabetes
             </h1>
@@ -804,7 +804,8 @@ elif st.session_state.page == "result":
     # CATATAN KHUSUS
     if data and data["catatan"]:
         st.markdown("<div class='section-header'>⚠️ Catatan Penting</div>", unsafe_allow_html=True)
-        st.warning(data["catatan"])
+        catatan_text = data["catatan"].replace("<strong>", "**").replace("</strong>", "**")
+        st.warning(catatan_text)
 
 # =========================================================
 # DISCLAIMER NOTICE & FOOTER
