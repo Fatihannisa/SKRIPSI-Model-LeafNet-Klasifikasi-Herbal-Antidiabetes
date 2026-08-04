@@ -613,9 +613,6 @@ if st.session_state.page == "upload":
     # Hero Banner
     st.markdown("""
         <div style="background: linear-gradient(135deg, #064e3b 0%, #0d9488 100%); padding: 36px; border-radius: 20px; color: white; margin-bottom: 30px;">
-            <span style="background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 20px; font-size: 13px; font-weight: 700;">
-                MODEL LEAFNET DUAL-BRANCH
-            </span>
             <h1 style="font-family:'Playfair Display', serif; font-size: 34px; font-weight: 700; margin-top: 12px; margin-bottom: 12px; color: #f0fdf4;">
                 Sistem Identifikasi Daun Herbal Antidiabetes
             </h1>
