@@ -747,11 +747,29 @@ elif st.session_state.page == "result":
         """, unsafe_allow_html=True)
 
         # Container Top-5 Prediksi Progress Bar
-        st.markdown("<div class='custom-card'><b>Top-5 Prediksi Model:</b><br><br>", unsafe_allow_html=True)
+        top5_items_html = ""
         for i, (label, score) in enumerate(top5, 1):
-            st.write(f"**{i}. {label}** — `{score * 100:.2f}%`")
-            st.progress(float(score))
-        st.markdown("</div>", unsafe_allow_html=True)
+            pct = score * 100
+            top5_items_html += f"""
+                <div style="margin-bottom: 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 600; margin-bottom: 4px; color: #1e293b;">
+                        <span><b>{i}.</b> <i style="font-family: 'Playfair Display', serif;">{label}</i></span>
+                        <code style="color: #047857; font-weight: 700; font-size: 13px; font-family: monospace;">{pct:.2f}%</code>
+                    </div>
+                    <div style="width: 100%; background-color: #f1f5f9; height: 10px; border-radius: 999px; overflow: hidden;">
+                        <div style="width: {pct:.2f}%; background-color: #047857; height: 100%; border-radius: 999px;"></div>
+                    </div>
+                </div>
+            """
+
+        st.markdown(f"""
+            <div class="custom-card">
+                <span style="font-size: 14px; font-weight: 700; color: #0f172a; display: block; margin-bottom: 16px;">
+                    Top-5 Prediksi Model:
+                </span>
+                {top5_items_html}
+            </div>
+        """, unsafe_allow_html=True)
 
     # INFORMASI DETAIL HERBAL
     st.markdown("<hr>", unsafe_allow_html=True)
