@@ -648,9 +648,21 @@ if st.session_state.page == "upload":
                 st.warning("Silakan pilih atau unggah gambar daun terlebih dahulu.")
 
     with col2:
-        st.markdown("""
-            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 24px;">
-                <h4 style="margin-top:0; color:#0f172a; font-size:16px;">📌 Tips Pengambilan Gambar</h4>
+        sample_paths = [
+            "images/IMG_20251028_152831.jpg",
+            "images/IMG_20251029_170845.jpg",
+            "images/IMG_20251031_131056.jpg",
+            "images/IMG_20251114_161441.jpg"
+        ]
+        sample_imgs_html = ""
+        for path in sample_paths:
+            b64 = load_base64(path)
+            if b64:
+                sample_imgs_html += f'<div style="aspect-ratio: 1; border-radius: 10px; overflow: hidden; border: 1px solid #cbd5e1;"><img src="data:image/jpeg;base64,{b64}" style="width: 100%; height: 100%; object-fit: cover;"></div>'
+
+        st.markdown(f"""
+            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 24px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);">
+                <h4 style="margin-top:0; color:#0f172a; font-size:16px; font-weight:700;">📌 Tips Pengambilan Gambar</h4>
                 <ul style="font-size:13px; color:#475569; padding-left:20px; line-height:1.7;">
                     <li>Foto <b>1 helai daun</b> saja.</li>
                     <li>Pastikan helai daun berada tepat di tengah frame kamera.</li>
@@ -658,23 +670,13 @@ if st.session_state.page == "upload":
                     <li><b>Latar belakang wajib polos</b> dan berwarna terang (diutamakan putih).</li>
                     <li>Foto diambil dari sisi atas atau bawah tegak lurus.</li>
                 </ul>
-                <h4 style="color:#0f172a; font-size:14px; margin-top:20px; margin-bottom:10px;">Contoh Sampel yang Baik:</h4>
+                <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 20px 0;">
+                <h4 style="color:#0f172a; font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px;">Contoh Sampel yang Baik:</h4>
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
+                    {sample_imgs_html}
+                </div>
             </div>
         """, unsafe_allow_html=True)
-
-        # Grid Contoh Sampel Daun
-        ex_cols = st.columns(4)
-        sample_paths = [
-            "images/IMG_20251028_152831.jpg",
-            "images/IMG_20251029_170845.jpg",
-            "images/IMG_20251031_131056.jpg",
-            "images/IMG_20251114_161441.jpg"
-        ]
-
-        for i, path in enumerate(sample_paths):
-            with ex_cols[i % 4]:
-                if os.path.exists(path):
-                    st.image(path, use_container_width=True)
 
 # =========================================================
 # HALAMAN 2: HASIL IDENTIFIKASI
