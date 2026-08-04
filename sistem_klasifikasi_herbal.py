@@ -467,9 +467,9 @@ html, body, [class*="css"] {
     background-color: #d1fae5;
     color: #065f46;
     border: 1px solid #a7f3d0;
-    padding: 6px 14px;
+    padding: 7px 16px;
     border-radius: 999px;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 700;
     display: inline-block;
 }
@@ -478,9 +478,9 @@ html, body, [class*="css"] {
     background-color: #f1f5f9;
     color: #334155;
     border: 1px solid #cbd5e1;
-    padding: 6px 14px;
+    padding: 7px 16px;
     border-radius: 999px;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 700;
     display: inline-block;
 }
@@ -498,7 +498,7 @@ html, body, [class*="css"] {
 
 /* Info Section Header */
 .section-header {
-    font-size: 18px;
+    font-size: 20px;
     font-weight: 700;
     color: #0f172a;
     margin-top: 24px;
@@ -513,10 +513,10 @@ html, body, [class*="css"] {
     background-color: #fffbeb;
     border: 1px solid #fde68a;
     border-radius: 14px;
-    padding: 16px 20px;
+    padding: 20px 24px;
     color: #78350f;
-    font-size: 14px;
-    line-height: 1.5;
+    font-size: 15px;
+    line-height: 1.7;
     margin-top: 30px;
 }
 
@@ -527,9 +527,9 @@ div.stButton > button {
     color: #ffffff !important;
     border: none !important;
     border-radius: 12px !important;
-    padding: 12px 24px !important;
+    padding: 14px 28px !important;
     font-weight: 700 !important;
-    font-size: 15px !important;
+    font-size: 16px !important;
     transition: background-color 0.2s ease, transform 0.1s ease !important;
     box-shadow: 0 4px 12px rgba(6, 95, 70, 0.25) !important;
 }
@@ -563,13 +563,14 @@ div[data-testid="stFileUploader"] button {
     border: 1px solid #a7f3d0 !important;
     font-weight: 700 !important;
     border-radius: 10px !important;
+    font-size: 15px !important;
 }
 
 /* Footer */
 .footer-text {
     text-align: center;
     color: #64748b;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 600;
     padding-top: 20px;
     border-top: 1px solid #e2e8f0;
@@ -612,13 +613,13 @@ if st.session_state.page == "upload":
     # Hero Banner
     st.markdown("""
         <div style="background: linear-gradient(135deg, #064e3b 0%, #0d9488 100%); padding: 36px; border-radius: 20px; color: white; margin-bottom: 30px;">
-            <span style="background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700;">
+            <span style="background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 20px; font-size: 13px; font-weight: 700;">
                 MODEL LEAFNET DUAL-BRANCH
             </span>
             <h1 style="font-family:'Playfair Display', serif; font-size: 34px; font-weight: 700; margin-top: 12px; margin-bottom: 12px; color: #f0fdf4;">
                 Sistem Identifikasi Daun Herbal Antidiabetes
             </h1>
-            <p style="font-size: 15px; line-height: 1.6; color: #e2e8f0; margin: 0; max-width: 900px;">
+            <p style="font-size: 16px; line-height: 1.7; color: #e2e8f0; margin: 0; max-width: 900px;">
                 DiaHerb dikembangkan untuk mengidentifikasi spesies tanaman herbal antidiabetes berdasarkan citra daun. 
                 Sistem ini memanfaatkan kecerdasan buatan <b>Deep Learning LeafNet</b> yang menggabungkan ekstraksi jaringan tulang daun (<i>Vein Branch</i>) dan fitur visual warna (<i>RGB Branch</i> dengan DenseNet201).
             </p>
@@ -662,8 +663,8 @@ if st.session_state.page == "upload":
 
         st.markdown(f"""
             <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 24px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);">
-                <h4 style="margin-top:0; color:#0f172a; font-size:16px; font-weight:700;">📌 Tips Pengambilan Gambar</h4>
-                <ul style="font-size:13px; color:#475569; padding-left:20px; line-height:1.7;">
+                <h4 style="margin-top:0; color:#0f172a; font-size:17px; font-weight:700;">📌 Tips Pengambilan Gambar</h4>
+                <ul style="font-size:15px; color:#334155; padding-left:20px; line-height:1.8;">
                     <li>Foto <b>1 helai daun</b> saja.</li>
                     <li>Pastikan helai daun berada tepat di tengah frame kamera.</li>
                     <li>Pencahayaan terang agar struktur urat/venasi daun terlihat jelas.</li>
@@ -671,7 +672,7 @@ if st.session_state.page == "upload":
                     <li>Foto diambil dari sisi atas atau bawah tegak lurus.</li>
                 </ul>
                 <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 20px 0;">
-                <h4 style="color:#0f172a; font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px;">Contoh Sampel yang Baik:</h4>
+                <h4 style="color:#0f172a; font-size:14px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px;">Contoh Sampel yang Baik:</h4>
                 <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
                     {sample_imgs_html}
                 </div>
@@ -706,7 +707,7 @@ elif st.session_state.page == "result":
                 <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; display: flex; align-items: center; justify-content: center; width: 100%; min-height: 320px;">
                     <img src="data:image/png;base64,{img_b64}" style="max-height: 290px; max-width: 100%; object-fit: contain; border-radius: 8px; margin: 0 auto; display: block;">
                 </div>
-                <p style="font-size: 13px; color: #94a3b8; font-style: italic; margin-top: 14px; margin-bottom: 0; font-weight: 500;">Gambar yang Diunggah</p>
+                <p style="font-size: 14px; color: #64748b; font-style: italic; margin-top: 14px; margin-bottom: 0; font-weight: 500;">Gambar yang Diunggah</p>
             </div>
         """, unsafe_allow_html=True)
 
@@ -714,10 +715,10 @@ elif st.session_state.page == "result":
             nama_umum_list = "".join([f"<li>{n}</li>" for n in data["nama_umum"]])
             st.markdown(f"""
                 <div class="custom-card">
-                    <span style="font-size:12px; font-weight:700; color:#64748b; text-transform:uppercase;">Nama Ilmiah:</span>
+                    <span style="font-size:13px; font-weight:700; color:#64748b; text-transform:uppercase;">Nama Ilmiah:</span>
                     <div class="scientific-name">{pred_name}</div>
-                    <span style="font-size:12px; font-weight:700; color:#64748b; text-transform:uppercase;">Nama Umum:</span>
-                    <ul style="font-size:14px; color:#334155; margin-top:6px; padding-left:20px;">
+                    <span style="font-size:13px; font-weight:700; color:#64748b; text-transform:uppercase;">Nama Umum:</span>
+                    <ul style="font-size:16px; color:#1e293b; margin-top:6px; padding-left:20px; font-weight: 500; line-height: 1.7;">
                         {nama_umum_list}
                     </ul>
                 </div>
@@ -735,13 +736,13 @@ elif st.session_state.page == "result":
         st.markdown(f"""
             <div class="custom-card">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                    <span style="font-size:13px; font-weight:700; color:#64748b;">STATUS TANAMAN:</span>
+                    <span style="font-size:14px; font-weight:700; color:#64748b;">STATUS TANAMAN:</span>
                     <span class="{status_class}">{status_text}</span>
                 </div>
                 <hr style="border-top:1px solid #f1f5f9; margin:12px 0;">
                 <div style="display:flex; justify-content:space-between; align-items:baseline;">
-                    <span style="font-size:13px; font-weight:600; color:#475569;">Kepercayaan Sistem:</span>
-                    <span style="font-size:26px; font-weight:800; color:#047857; font-family:monospace;">{conf * 100:.2f}%</span>
+                    <span style="font-size:15px; font-weight:600; color:#334155;">Kepercayaan Sistem:</span>
+                    <span style="font-size:28px; font-weight:800; color:#047857; font-family:monospace;">{conf * 100:.2f}%</span>
                 </div>
             </div>
         """, unsafe_allow_html=True)
@@ -751,12 +752,12 @@ elif st.session_state.page == "result":
         for i, (label, score) in enumerate(top5, 1):
             pct = score * 100
             top5_items_html += (
-                f'<div style="margin-bottom: 12px;">'
-                f'<div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 600; margin-bottom: 4px; color: #1e293b;">'
-                f'<span><b>{i}.</b> <span style="font-style: italic; font-weight: 500; color: #1e293b;">{label}</span></span>'
-                f'<code style="color: #047857; font-weight: 700; font-size: 13px; font-family: monospace;">{pct:.2f}%</code>'
+                f'<div style="margin-bottom: 14px;">'
+                f'<div style="display: flex; justify-content: space-between; align-items: center; font-size: 15px; font-weight: 600; margin-bottom: 6px; color: #1e293b;">'
+                f'<span><b>{i}.</b> <span style="font-style: italic; font-weight: 500; color: #0f172a;">{label}</span></span>'
+                f'<code style="color: #047857; font-weight: 700; font-size: 15px; font-family: monospace;">{pct:.2f}%</code>'
                 f'</div>'
-                f'<div style="width: 100%; background-color: #f1f5f9; height: 10px; border-radius: 999px; overflow: hidden;">'
+                f'<div style="width: 100%; background-color: #f1f5f9; height: 12px; border-radius: 999px; overflow: hidden;">'
                 f'<div style="width: {pct:.2f}%; background-color: #047857; height: 100%; border-radius: 999px;"></div>'
                 f'</div>'
                 f'</div>'
@@ -764,7 +765,7 @@ elif st.session_state.page == "result":
 
         st.markdown(
             f'<div class="custom-card">'
-            f'<span style="font-size: 14px; font-weight: 700; color: #0f172a; display: block; margin-bottom: 16px;">Top-5 Prediksi Model:</span>'
+            f'<span style="font-size: 16px; font-weight: 700; color: #0f172a; display: block; margin-bottom: 16px;">Top-5 Prediksi Model:</span>'
             f'{top5_items_html}'
             f'</div>',
             unsafe_allow_html=True
