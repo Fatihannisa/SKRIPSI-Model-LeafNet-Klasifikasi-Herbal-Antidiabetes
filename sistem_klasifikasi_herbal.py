@@ -753,7 +753,7 @@ elif st.session_state.page == "result":
             top5_items_html += (
                 f'<div style="margin-bottom: 12px;">'
                 f'<div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 600; margin-bottom: 4px; color: #1e293b;">'
-                f'<span><b>{i}.</b> <i style="font-family: \'Playfair Display\', serif;">{label}</i></span>'
+                f'<span><b>{i}.</b> <span style="font-style: italic; font-weight: 500; color: #1e293b;">{label}</span></span>'
                 f'<code style="color: #047857; font-weight: 700; font-size: 13px; font-family: monospace;">{pct:.2f}%</code>'
                 f'</div>'
                 f'<div style="width: 100%; background-color: #f1f5f9; height: 10px; border-radius: 999px; overflow: hidden;">'
