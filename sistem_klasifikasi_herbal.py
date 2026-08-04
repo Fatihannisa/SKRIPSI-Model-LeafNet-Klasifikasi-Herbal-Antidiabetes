@@ -1,781 +1,805 @@
-import React, { useState } from "react";
-import { 
-  Upload, 
-  ArrowLeft, 
-  RotateCcw,
-  BookOpen, 
-  Leaf, 
-  AlertTriangle, 
-  CheckCircle2, 
-  Info,
-  ChevronRight,
-  ExternalLink
-} from "lucide-react";
+import streamlit as st
+import numpy as np
+from PIL import Image
+import tensorflow as tf
+import streamlit.components.v1 as components
+import base64
+import cv2
+import os
+import io
+from rembg import remove
 
-// Types for Herb Data
-interface HerbDetail {
-  nama_umum: string[];
-  status: string;
-  informasi: string;
-  tautan_artikel: string;
-  tautan_jurnal: string;
-  cara_mengolah: string[];
-  catatan: string;
+# =========================================================
+# CONFIG & PAGE SETUP
+# =========================================================
+st.set_page_config(
+    page_title="DiaHerb - Sistem Identifikasi Daun Herbal Antidiabetes",
+    page_icon="🌿",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
+
+# Helper Base64 Gambar
+def load_base64(path):
+    if os.path.exists(path):
+        with open(path, "rb") as f:
+            data = f.read()
+        return base64.b64encode(data).decode()
+    return ""
+
+# =========================================================
+# LOAD MODEL TFLITE
+# =========================================================
+@st.cache_resource
+def load_tflite():
+    model_file = "leafnet_dual_branch.tflite"
+    if not os.path.exists(model_file):
+        st.warning(f"File model '{model_file}' tidak ditemukan di directory root. Menggunakan simulasi prediksi...")
+        return None
+    interpreter = tf.lite.Interpreter(model_path=model_file)
+    interpreter.allocate_tensors()
+    return interpreter
+
+interpreter = load_tflite()
+
+LABELS = [
+    "Acalypha siamensis", "Andrographis paniculata", "Cananga odorata", "Capsicum sp", "Catharanthus roseus",
+    "Dracaena angustifolia", "Ficus microcarpa", "Flueggea virosa", "Gardenia jasminoides", "Leucaena leucocephala",
+    "Moringa oleifera", "Orthosiphon aristatus", "Pandanus amaryllifolius", "Phyllanthus amarus",
+    "Physalis angulata", "Rosa sp", "Solanum nigrum", "Syzygium polyanthum", "Vernonia amygdalina", "Ziziphus mauritiana"
+]
+
+CONFIG = {
+    "IMG_SIZE": (256, 256),
+    "TARGET_BRIGHTNESS": 145,
+    "CLAHE_CLIP": 3.5,
+    "CLAHE_TILE": (4, 4),
+    "VEIN_STRENGTH": 1.2
 }
 
-// Full database of 20 classes mapped exactly from python code
-const herbalInfo: Record<string, HerbDetail> = {
-  "Acalypha siamensis": {
-    nama_umum: ["Teh-tehan", "Teh hutan"],
-    status: "Tanaman pembanding",
-    informasi: "Teh-tehan adalah tanaman perdu atau semak yang sering digunakan sebagai pagar hidup dekoratif.",
-    tautan_artikel: "",
-    tautan_jurnal: "",
-    cara_mengolah: [],
-    catatan: "Tanaman ini <strong>bukan</strong> merupakan tanaman herbal antidiabetes."
-  },
-  "Andrographis paniculata": {
-    nama_umum: ["Sambiloto", "Ki pait", "Ampadu tanah", "Ki oray"],
-    status: "Tanaman herbal antidiabetes",
-    informasi: "Sambiloto terkenal sebagai herbal dengan kandungan andrographolide (AGL) yang sangat pahit, tetapi berkhasiat tinggi dalam mengendalikan kadar gula darah dan bersifat antiinflamasi. AGL mampu meningkatkan produksi insulin dan penyerapan glukosa sehingga mengurangi kadar gula dalam darah.",
-    tautan_artikel: "https://hellosehat.com/diabetes/daun-sambiloto-untuk-diabetes/",
-    tautan_jurnal: "https://jurnal.ikbis.ac.id/index.php/infokes/article/view/371/221",
-    cara_mengolah: [
-      "Siapkan 25 lembar daun sambiloto segar dan 110 ml air bersih.",
-      "Cuci bersih daun sambiloto di bawah air mengalir.",
-      "Rebus daun sambiloto sampai air mendidih.",
-      "Minum air rebusan daun sambiloto satu kali sehari dengan takaran 100 ml."
-    ],
-    catatan: "Untuk menghindari risiko efek samping, disarankan untuk mengonsumsi dalam jumlah yang wajar dan tidak lebih dari dua kali sehari. Jika memiliki kondisi medis tertentu, konsultasikan terlebih dahulu dengan dokter."
-  },
-  "Cananga odorata": {
-    nama_umum: ["Kenanga", "Kananga", "Sepalen"],
-    status: "Tanaman pembanding",
-    informasi: "Kenanga adalah tanaman tropis yang bunganya sangat harum. Dimanfaatkan sebagai bahan utama aromaterapi dan kosmetik.",
-    tautan_artikel: "",
-    tautan_jurnal: "",
-    cara_mengolah: [],
-    catatan: "Tanaman ini <strong>bukan</strong> merupakan tanaman herbal antidiabetes."
-  },
-  "Capsicum sp": {
-    nama_umum: ["Cabai", "Lombok"],
-    status: "Tanaman pembanding",
-    informasi: "Cabai adalah tanaman hortikultura dari famili terong-terongan yang digunakan sebagai bumbu dapur.",
-    tautan_artikel: "",
-    tautan_jurnal: "",
-    cara_mengolah: [],
-    catatan: "Tanaman ini <strong>bukan</strong> merupakan tanaman herbal antidiabetes."
-  },
-  "Catharanthus roseus": {
-    nama_umum: ["Tapak dara", "Bunga serdadu", "Kembang tembaga"],
-    status: "Tanaman herbal antidiabetes",
-    informasi: "Ekstrak daun tapak dara dipercaya dapat merangsang sekresi insulin dalam sel beta pankreas dan meningkatkan penggunaan glukosa di jaringan perifer, membantu menjaga kestabilan gula darah.",
-    tautan_artikel: "https://hellosehat.com/herbal-alternatif/herbal/manfaat-daun-tapak-dara/",
-    tautan_jurnal: "https://jurnal.unpad.ac.id/farmaka/article/view/47508/pdf",
-    cara_mengolah: [
-      "Siapkan 5-10 lembar daun tapak dara yang masih segar dan 2 gelas air.",
-      "Cuci bersih daun tapak dara di bawah air mengalir.",
-      "Rebus daun dengan api kecil sampai air berubah warna.",
-      "Saring dan biarkan hingga hangat sebelum diminum."
-    ],
-    catatan: "Disarankan mengonsumsi satu gelas sehari. Konsultasikan dengan dokter untuk rencana pengobatan yang aman."
-  },
-  "Dracaena angustifolia": {
-    nama_umum: ["Suji", "Suji hijau", "Semar"],
-    status: "Tanaman pembanding",
-    informasi: "Suji hijau adalah tumbuhan perdu tahunan yang daunnya dimanfaatkan sebagai pewarna hijau alami makanan.",
-    tautan_artikel: "",
-    tautan_jurnal: "",
-    cara_mengolah: [],
-    catatan: "Tanaman ini <strong>bukan</strong> merupakan tanaman herbal antidiabetes."
-  },
-  "Ficus microcarpa": {
-    nama_umum: ["Beringin dolar", "Beringin cina"],
-    status: "Tanaman pembanding",
-    informasi: "Beringin dolar adalah spesies pohon ara tropis yang populer sebagai tanaman hias dan bahan bonsai.",
-    tautan_artikel: "",
-    tautan_jurnal: "",
-    cara_mengolah: [],
-    catatan: "Tanaman ini <strong>bukan</strong> merupakan tanaman herbal antidiabetes."
-  },
-  "Flueggea virosa": {
-    nama_umum: ["Sigar jalak", "Trembilutan"],
-    status: "Tanaman pembanding",
-    informasi: "Sigar jalak adalah tanaman perdu atau pohon kecil yang banyak digunakan sebagai tanaman pagar.",
-    tautan_artikel: "",
-    tautan_jurnal: "",
-    cara_mengolah: [],
-    catatan: "Tanaman ini <strong>bukan</strong> merupakan tanaman herbal antidiabetes."
-  },
-  "Gardenia jasminoides": {
-    nama_umum: ["Kaca piring", "Melati tanjung"],
-    status: "Tanaman pembanding",
-    informasi: "Kaca piring adalah tanaman perdu tropis berbunga putih dan beraroma harum lembut.",
-    tautan_artikel: "",
-    tautan_jurnal: "",
-    cara_mengolah: [],
-    catatan: "Tanaman ini <strong>bukan</strong> merupakan tanaman herbal antidiabetes."
-  },
-  "Leucaena leucocephala": {
-    nama_umum: ["Lamtoro", "Petai cina"],
-    status: "Tanaman pembanding",
-    informasi: "Lamtoro atau petai cina adalah perdu polong-polongan yang digunakan sebagai peneduh, pagar hidup, dan pakan ternak.",
-    tautan_artikel: "",
-    tautan_jurnal: "",
-    cara_mengolah: [],
-    catatan: "Tanaman ini <strong>bukan</strong> merupakan tanaman herbal antidiabetes."
-  },
-  "Moringa oleifera": {
-    nama_umum: ["Kelor", "Merunggai"],
-    status: "Tanaman herbal antidiabetes",
-    informasi: "Daun kelor memiliki efek hipoglikemik yang membantu menurunkan kadar gula darah dengan meningkatkan sensitivitas insulin dan mengurangi penyerapan glukosa di usus.",
-    tautan_artikel: "https://hellosehat.com/diabetes/tipe-2/manfaat-daun-kelor-untuk-diabetes/",
-    tautan_jurnal: "https://doi.org/10.35617/jfionline.v12i1.21",
-    cara_mengolah: [
-      "Siapkan segenggam daun kelor (10-15 gram) dan 600 ml air.",
-      "Cuci bersih daun kelor di bawah air mengalir.",
-      "Panaskan air hingga mendidih, lalu masukkan daun kelor dan rebus 5-15 menit.",
-      "Saring air rebusan untuk diminum. Daun rebusan tetap bisa dikonsumsi sebagai lalapan."
-    ],
-    catatan: "Mengonsumsi dalam jumlah wajar. Jika memiliki kondisi medis tertentu, konsultasikan dengan dokter."
-  },
-  "Orthosiphon aristatus": {
-    nama_umum: ["Kumis kucing", "Remujung"],
-    status: "Tanaman herbal antidiabetes",
-    informasi: "Daun kumis kucing kaya flavonoid dan saponin. Flavonoid menghambat pemecahan karbohidrat di usus, sedangkan saponin merangsang pelepasan insulin.",
-    tautan_artikel: "https://hellosehat.com/herbal-alternatif/herbal/tanaman-kumis-kucing/",
-    tautan_jurnal: "https://doi.org/10.36990/hijp.v7i1.533",
-    cara_mengolah: [
-      "Siapkan segenggam daun kumis kucing (10-15 gram) dan 500 ml air.",
-      "Cuci bersih di bawah air mengalir.",
-      "Rebus selama 15-20 menit.",
-      "Saring air rebusan dan minum 2-3 kali sehari."
-    ],
-    catatan: "Gunakan dalam jumlah wajar dan konsultasikan ke dokter untuk pemakaian jangka panjang."
-  },
-  "Pandanus amaryllifolius": {
-    nama_umum: ["Pandan wangi", "Pandan"],
-    status: "Tanaman herbal antidiabetes",
-    informasi: "Daun pandan mengandung flavonoid, tanin, dan polifenol yang mampu merangsang produksi hormon insulin dari sel beta pankreas.",
-    tautan_artikel: "https://share.google/BTrQ3MBtqbTndrJvO",
-    tautan_jurnal: "https://ejurnalmalahayati.ac.id/index.php/kebidanan/article/view/3024/pdf",
-    cara_mengolah: [
-      "Siapkan 3-4 lembar daun pandan segar/kering dan 500 ml air.",
-      "Cuci bersih dan potong menjadi beberapa bagian.",
-      "Rebus dalam air mendidih selama 10-15 menit hingga air berwarna hijau kekuningan.",
-      "Saring air rebusan dan minum hangat."
-    ],
-    catatan: "Hindari menambahkan gula pasir tinggi kalori; gunakan pemanis alami jika diperlukan."
-  },
-  "Phyllanthus amarus": {
-    nama_umum: ["Meniran"],
-    status: "Tanaman herbal antidiabetes",
-    informasi: "Meniran memiliki senyawa aktif yang memengaruhi metabolisme glukosa dan mendukung pengelolaan tingkat kadar gula darah secara berkelanjutan.",
-    tautan_artikel: "https://www.halodoc.com/artikel/manfaat-pohon-meniran-jaga-imun-ginjal-sehat-alami",
-    tautan_jurnal: "https://doi.org/10.36656/jpfh.v2i1.79",
-    cara_mengolah: [
-      "Siapkan segenggam daun meniran segar (10-15 gram) dan 3 gelas air.",
-      "Cuci bersih di bawah air mengalir.",
-      "Rebus hingga air menyusut sekitar 1 gelas.",
-      "Saring dan konsumsi selagi hangat 1-2 kali sehari."
-    ],
-    catatan: "Konsultasikan dengan dokter jika sedang mengonsumsi obat-obatan medis rutin."
-  },
-  "Physalis angulata": {
-    nama_umum: ["Ciplukan", "Ceplukan", "Cecendet"],
-    status: "Tanaman herbal antidiabetes",
-    informasi: "Daun Ciplukan memiliki indeks glikemik rendah dan dapat meningkatkan sensitivitas atau produksi insulin dalam tubuh.",
-    tautan_artikel: "https://www.halodoc.com/artikel/pohon-ciplukan-dan-khasiatnya-dari-diabetes-hingga-kanker",
-    tautan_jurnal: "https://journal.ukmc.ac.id/index.php/joh/article/view/1141/1081",
-    cara_mengolah: [
-      "Siapkan 10-15 gram daun ciplukan segar dan 3 gelas air (600 ml).",
-      "Cuci bersih daun di bawah air mengalir.",
-      "Rebus dengan api sedang (hindari panci aluminium) hingga menyusut jadi 1 gelas.",
-      "Saring dan minum 1-2 kali sehari."
-    ],
-    catatan: "Disarankan merebus dengan wadah stainless steel atau enamel."
-  },
-  "Rosa sp.": {
-    nama_umum: ["Mawar"],
-    status: "Tanaman pembanding",
-    informasi: "Mawar adalah tumbuhan perdu berkayu dan berduri yang terkenal sebagai tanaman hias populer.",
-    tautan_artikel: "",
-    tautan_jurnal: "",
-    cara_mengolah: [],
-    catatan: "Tanaman ini <strong>bukan</strong> merupakan tanaman herbal antidiabetes."
-  },
-  "Solanum nigrum": {
-    nama_umum: ["Ranti", "Leunca"],
-    status: "Tanaman pembanding",
-    informasi: "Ranti adalah tanaman suku terung-terungan yang sering dikonsumsi sebagai lalapan atau bahan masakan.",
-    tautan_artikel: "",
-    tautan_jurnal: "",
-    cara_mengolah: [],
-    catatan: "Tanaman ini <strong>bukan</strong> merupakan tanaman herbal antidiabetes."
-  },
-  "Syzygium polyanthum": {
-    nama_umum: ["Salam", "Manting", "Ubar serai"],
-    status: "Tanaman herbal antidiabetes",
-    informasi: "Daun salam mengandung flavonoid, tanin, dan polifenol yang meningkatkan kerja insulin serta menghambat penyerapan gula di usus.",
-    tautan_artikel: "https://www.halodoc.com/artikel/daun-salam-khasiat-dan-cara-konsumsi-sehat",
-    tautan_jurnal: "https://doi.org/10.3164/jcbn.08-188",
-    cara_mengolah: [
-      "Siapkan 10-15 lembar daun salam segar dan 600 ml air (3 gelas).",
-      "Cuci bersih daun salam.",
-      "Rebus dengan api sedang sampai menyusut menjadi 1 gelas (200 ml).",
-      "Saring dan minum hangat 2 kali sehari sebelum makan."
-    ],
-    catatan: "Gunakan wadah perebus yang tidak reaktif terhadap logam."
-  },
-  "Vernonia amygdalina": {
-    nama_umum: ["Daun Afrika", "Daun pahit", "Daun insulin"],
-    status: "Tanaman herbal antidiabetes",
-    informasi: "Ekstrak daun Afrika mengandung saponin, tanin, flavonoid, dan alkaloid yang terbukti efektif menekan lonjakan glukosa darah pasca makan.",
-    tautan_artikel: "https://hellosehat.com/herbal-alternatif/herbal/manfaat-daun-afrika/",
-    tautan_jurnal: "https://www.neliti.com/id/publications/460123/potensi-daun-afrika-vernonia-amygdalina-sebagai-antidiabetik",
-    cara_mengolah: [
-      "Siapkan 5-10 lembar daun Afrika dan 4 gelas air.",
-      "Cuci bersih di bawah air mengalir.",
-      "Rebus selama 10-15 menit hingga tersisa 2 gelas.",
-      "Minum pagi dan sore hari. Dapat ditambahkan sedikit perasan jeruk nipis."
-    ],
-    catatan: "Minum secara teratur dalam dosis aman."
-  },
-  "Ziziphus mauritiana": {
-    nama_umum: ["Bidara", "Widara", "Bukol"],
-    status: "Tanaman herbal antidiabetes",
-    informasi: "Kandungan saponin dan flavonoid dalam daun bidara berfungsi sebagai antioksidan kuat untuk meningkatkan efektivitas kerja hormon insulin.",
-    tautan_artikel: "https://hellosehat.com/herbal-alternatif/herbal/daun-bidara/",
-    tautan_jurnal: "https://doi.org/10.26740/icaj.v6i2.32598",
-    cara_mengolah: [
-      "Siapkan 10 lembar daun bidara tua, 1/2 buah jeruk nipis, dan 600 ml air.",
-      "Cuci bersih daun bidara.",
-      "Rebus air hingga mendidih, masukkan daun bidara dan masak 20 menit dengan api kecil.",
-      "Tambahkan perasan jeruk nipis dan nikmati selagi hangat."
-    ],
-    catatan: "Jeruk nipis membantu menambah rasa segar sekaligus mempermudah ekstraksi senyawa aktif."
-  }
-};
-
-// Map alternate key names
-const getHerbData = (name: string): HerbDetail | undefined => {
-  if (!name) return undefined;
-  if (herbalInfo[name]) return herbalInfo[name];
-  if (name === "Phyllanthus niruri") return herbalInfo["Phyllanthus amarus"];
-  if (name === "Rosa sp") return herbalInfo["Rosa sp."];
-  const clean = name.replace(/\.$/, "");
-  if (herbalInfo[clean]) return herbalInfo[clean];
-  const withDot = clean + ".";
-  if (herbalInfo[withDot]) return herbalInfo[withDot];
-  return undefined;
-};
-
-interface Prediction {
-  label: string;
-  score: number;
+# =========================================================
+# DATABASE HERBAL DINAMIS
+# =========================================================
+herbal_info = {
+    "Acalypha siamensis": {
+        "nama_umum": ["Teh-tehan", "Teh hutan"],
+        "status": "Tanaman pembanding",
+        "informasi": "Teh-tehan adalah tanaman perdu atau semak yang sering digunakan sebagai pagar hidup dekoratif.",
+        "tautan_artikel": "",
+        "tautan_jurnal": "",
+        "cara_mengolah": [],
+        "catatan": "Tanaman ini <strong>bukan</strong> merupakan tanaman herbal antidiabetes."
+    },
+    "Andrographis paniculata": {
+        "nama_umum": ["Sambiloto", "Ki pait", "Ampadu tanah", "Ki oray"],
+        "status": "Tanaman herbal antidiabetes",
+        "informasi": "Sambiloto terkenal sebagai herbal dengan kandungan andrographolide (AGL) yang sangat pahit, tetapi berkhasiat tinggi dalam mengendalikan kadar gula darah dan bersifat antiinflamasi. AGL mampu meningkatkan produksi insulin dan penyerapan glukosa sehingga mengurangi kadar gula dalam darah.",
+        "tautan_artikel": "https://hellosehat.com/diabetes/daun-sambiloto-untuk-diabetes/",
+        "tautan_jurnal": "https://jurnal.ikbis.ac.id/index.php/infokes/article/view/371/221",
+        "cara_mengolah": [
+            "Siapkan 25 lembar daun sambiloto segar dan 110 ml air bersih.",
+            "Cuci bersih daun sambiloto di bawah air mengalir.",
+            "Rebus daun sambiloto sampai air mendidih.",
+            "Minum air rebusan daun sambiloto satu kali sehari dengan takaran 100 ml."
+        ],
+        "catatan": "Untuk menghindari risiko efek samping, disarankan untuk mengonsumsi dalam jumlah yang wajar dan tidak lebih dari dua kali sehari. Jika memiliki kondisi medis tertentu, konsultasikan terlebih dahulu dengan dokter."
+    },
+    "Cananga odorata": {
+        "nama_umum": ["Kenanga", "Kananga", "Sepalen"],
+        "status": "Tanaman pembanding",
+        "informasi": "Kenanga adalah tanaman tropis yang bunganya sangat harum. Dimanfaatkan sebagai bahan utama aromaterapi dan kosmetik.",
+        "tautan_artikel": "",
+        "tautan_jurnal": "",
+        "cara_mengolah": [],
+        "catatan": "Tanaman ini <strong>bukan</strong> merupakan tanaman herbal antidiabetes."
+    },
+    "Capsicum sp": {
+        "nama_umum": ["Cabai", "Lombok"],
+        "status": "Tanaman pembanding",
+        "informasi": "Cabai adalah tanaman hortikultura dari famili terong-terongan yang digunakan sebagai bumbu dapur.",
+        "tautan_artikel": "",
+        "tautan_jurnal": "",
+        "cara_mengolah": [],
+        "catatan": "Tanaman ini <strong>bukan</strong> merupakan tanaman herbal antidiabetes."
+    },
+    "Catharanthus roseus": {
+        "nama_umum": ["Tapak dara", "Bunga serdadu", "Kembang tembaga"],
+        "status": "Tanaman herbal antidiabetes",
+        "informasi": "Ekstrak daun tapak dara dipercaya dapat merangsang sekresi insulin dalam sel beta pankreas dan meningkatkan penggunaan glukosa di jaringan perifer, membantu menjaga kestabilan gula darah.",
+        "tautan_artikel": "https://hellosehat.com/herbal-alternatif/herbal/manfaat-daun-tapak-dara/",
+        "tautan_jurnal": "https://jurnal.unpad.ac.id/farmaka/article/view/47508/pdf",
+        "cara_mengolah": [
+            "Siapkan 5-10 lembar daun tapak dara yang masih segar dan 2 gelas air.",
+            "Cuci bersih daun tapak dara di bawah air mengalir.",
+            "Rebus daun dengan api kecil sampai air berubah warna.",
+            "Saring dan biarkan hingga hangat sebelum diminum."
+        ],
+        "catatan": "Disarankan mengonsumsi satu gelas sehari. Konsultasikan dengan dokter untuk rencana pengobatan yang aman."
+    },
+    "Dracaena angustifolia": {
+        "nama_umum": ["Suji", "Suji hijau", "Semar"],
+        "status": "Tanaman pembanding",
+        "informasi": "Suji hijau adalah tumbuhan perdu tahunan yang daunnya dimanfaatkan sebagai pewarna hijau alami makanan.",
+        "tautan_artikel": "",
+        "tautan_jurnal": "",
+        "cara_mengolah": [],
+        "catatan": "Tanaman ini <strong>bukan</strong> merupakan tanaman herbal antidiabetes."
+    },
+    "Ficus microcarpa": {
+        "nama_umum": ["Beringin dolar", "Beringin cina"],
+        "status": "Tanaman pembanding",
+        "informasi": "Beringin dolar adalah spesies pohon ara tropis yang populer sebagai tanaman hias dan bahan bonsai.",
+        "tautan_artikel": "",
+        "tautan_jurnal": "",
+        "cara_mengolah": [],
+        "catatan": "Tanaman ini <strong>bukan</strong> merupakan tanaman herbal antidiabetes."
+    },
+    "Flueggea virosa": {
+        "nama_umum": ["Sigar jalak", "Trembilutan"],
+        "status": "Tanaman pembanding",
+        "informasi": "Sigar jalak adalah tanaman perdu atau pohon kecil yang banyak digunakan sebagai tanaman pagar.",
+        "tautan_artikel": "",
+        "tautan_jurnal": "",
+        "cara_mengolah": [],
+        "catatan": "Tanaman ini <strong>bukan</strong> merupakan tanaman herbal antidiabetes."
+    },
+    "Gardenia jasminoides": {
+        "nama_umum": ["Kaca piring", "Melati tanjung"],
+        "status": "Tanaman pembanding",
+        "informasi": "Kaca piring adalah tanaman perdu tropis berbunga putih dan beraroma harum lembut.",
+        "tautan_artikel": "",
+        "tautan_jurnal": "",
+        "cara_mengolah": [],
+        "catatan": "Tanaman ini <strong>bukan</strong> merupakan tanaman herbal antidiabetes."
+    },
+    "Leucaena leucocephala": {
+        "nama_umum": ["Lamtoro", "Petai cina"],
+        "status": "Tanaman pembanding",
+        "informasi": "Lamtoro atau petai cina adalah perdu polong-polongan yang digunakan sebagai peneduh, pagar hidup, dan pakan ternak.",
+        "tautan_artikel": "",
+        "tautan_jurnal": "",
+        "cara_mengolah": [],
+        "catatan": "Tanaman ini <strong>bukan</strong> merupakan tanaman herbal antidiabetes."
+    },
+    "Moringa oleifera": {
+        "nama_umum": ["Kelor", "Merunggai"],
+        "status": "Tanaman herbal antidiabetes",
+        "informasi": "Daun kelor memiliki efek hipoglikemik yang membantu menurunkan kadar gula darah dengan meningkatkan sensitivitas insulin dan mengurangi penyerapan glukosa di usus.",
+        "tautan_artikel": "https://hellosehat.com/diabetes/tipe-2/manfaat-daun-kelor-untuk-diabetes/",
+        "tautan_jurnal": "https://doi.org/10.35617/jfionline.v12i1.21",
+        "cara_mengolah": [
+            "Siapkan segenggam daun kelor (10-15 gram) dan 600 ml air.",
+            "Cuci bersih daun kelor di bawah air mengalir.",
+            "Panaskan air hingga mendidih, lalu masukkan daun kelor dan rebus 5-15 menit.",
+            "Saring air rebusan untuk diminum. Daun rebusan tetap bisa dikonsumsi sebagai lalapan."
+        ],
+        "catatan": "Mengonsumsi dalam jumlah wajar. Jika memiliki kondisi medis tertentu, konsultasikan dengan dokter."
+    },
+    "Orthosiphon aristatus": {
+        "nama_umum": ["Kumis kucing", "Remujung"],
+        "status": "Tanaman herbal antidiabetes",
+        "informasi": "Daun kumis kucing kaya flavonoid dan saponin. Flavonoid menghambat pemecahan karbohidrat di usus, sedangkan saponin merangsang pelepasan insulin.",
+        "tautan_artikel": "https://hellosehat.com/herbal-alternatif/herbal/tanaman-kumis-kucing/",
+        "tautan_jurnal": "https://doi.org/10.36990/hijp.v7i1.533",
+        "cara_mengolah": [
+            "Siapkan segenggam daun kumis kucing (10-15 gram) dan 500 ml air.",
+            "Cuci bersih di bawah air mengalir.",
+            "Rebus selama 15-20 menit.",
+            "Saring air rebusan dan minum 2-3 kali sehari."
+        ],
+        "catatan": "Gunakan dalam jumlah wajar dan konsultasikan ke dokter untuk pemakaian jangka panjang."
+    },
+    "Pandanus amaryllifolius": {
+        "nama_umum": ["Pandan wangi", "Pandan"],
+        "status": "Tanaman herbal antidiabetes",
+        "informasi": "Daun pandan mengandung flavonoid, tanin, dan polifenol yang mampu merangsang produksi hormon insulin dari sel beta pankreas.",
+        "tautan_artikel": "https://share.google/BTrQ3MBtqbTndrJvO",
+        "tautan_jurnal": "https://ejurnalmalahayati.ac.id/index.php/kebidanan/article/view/3024/pdf",
+        "cara_mengolah": [
+            "Siapkan 3-4 lembar daun pandan segar/kering dan 500 ml air.",
+            "Cuci bersih dan potong menjadi beberapa bagian.",
+            "Rebus dalam air mendidih selama 10-15 menit hingga air berwarna hijau kekuningan.",
+            "Saring air rebusan dan minum hangat."
+        ],
+        "catatan": "Hindari menambahkan gula pasir tinggi kalori; gunakan pemanis alami jika diperlukan."
+    },
+    "Phyllanthus amarus": {
+        "nama_umum": ["Meniran"],
+        "status": "Tanaman herbal antidiabetes",
+        "informasi": "Meniran memiliki senyawa aktif yang memengaruhi metabolisme glukosa dan mendukung pengelolaan tingkat kadar gula darah secara berkelanjutan.",
+        "tautan_artikel": "https://www.halodoc.com/artikel/manfaat-pohon-meniran-jaga-imun-ginjal-sehat-alami",
+        "tautan_jurnal": "https://doi.org/10.36656/jpfh.v2i1.79",
+        "cara_mengolah": [
+            "Siapkan segenggam daun meniran segar (10-15 gram) dan 3 gelas air.",
+            "Cuci bersih di bawah air mengalir.",
+            "Rebus hingga air menyusut sekitar 1 gelas.",
+            "Saring dan konsumsi selagi hangat 1-2 kali sehari."
+        ],
+        "catatan": "Konsultasikan dengan dokter jika sedang mengonsumsi obat-obatan medis rutin."
+    },
+    "Physalis angulata": {
+        "nama_umum": ["Ciplukan", "Ceplukan", "Cecendet"],
+        "status": "Tanaman herbal antidiabetes",
+        "informasi": "Daun Ciplukan memiliki indeks glikemik rendah dan dapat meningkatkan sensitivitas atau produksi insulin dalam tubuh.",
+        "tautan_artikel": "https://www.halodoc.com/artikel/pohon-ciplukan-dan-khasiatnya-dari-diabetes-hingga-kanker",
+        "tautan_jurnal": "https://journal.ukmc.ac.id/index.php/joh/article/view/1141/1081",
+        "cara_mengolah": [
+            "Siapkan 10-15 gram daun ciplukan segar dan 3 gelas air (600 ml).",
+            "Cuci bersih daun di bawah air mengalir.",
+            "Rebus dengan api sedang (hindari panci aluminium) hingga menyusut jadi 1 gelas.",
+            "Saring dan minum 1-2 kali sehari."
+        ],
+        "catatan": "Disarankan merebus dengan wadah stainless steel atau enamel."
+    },
+    "Rosa sp.": {
+        "nama_umum": ["Mawar"],
+        "status": "Tanaman pembanding",
+        "informasi": "Mawar adalah tumbuhan perdu berkayu dan berduri yang terkenal sebagai tanaman hias populer.",
+        "tautan_artikel": "",
+        "tautan_jurnal": "",
+        "cara_mengolah": [],
+        "catatan": "Tanaman ini <strong>bukan</strong> merupakan tanaman herbal antidiabetes."
+    },
+    "Solanum nigrum": {
+        "nama_umum": ["Ranti", "Leunca"],
+        "status": "Tanaman pembanding",
+        "informasi": "Ranti adalah tanaman suku terung-terungan yang sering dikonsumsi sebagai lalapan atau bahan masakan.",
+        "tautan_artikel": "",
+        "tautan_jurnal": "",
+        "cara_mengolah": [],
+        "catatan": "Tanaman ini <strong>bukan</strong> merupakan tanaman herbal antidiabetes."
+    },
+    "Syzygium polyanthum": {
+        "nama_umum": ["Salam", "Manting", "Ubar serai"],
+        "status": "Tanaman herbal antidiabetes",
+        "informasi": "Daun salam mengandung flavonoid, tanin, dan polifenol yang meningkatkan kerja insulin serta menghambat penyerapan gula di usus.",
+        "tautan_artikel": "https://www.halodoc.com/artikel/daun-salam-khasiat-dan-cara-konsumsi-sehat",
+        "tautan_jurnal": "https://doi.org/10.3164/jcbn.08-188",
+        "cara_mengolah": [
+            "Siapkan 10-15 lembar daun salam segar dan 600 ml air (3 gelas).",
+            "Cuci bersih daun salam.",
+            "Rebus dengan api sedang sampai menyusut menjadi 1 gelas (200 ml).",
+            "Saring dan minum hangat 2 kali sehari sebelum makan."
+        ],
+        "catatan": "Gunakan wadah perebus yang tidak reaktif terhadap logam."
+    },
+    "Vernonia amygdalina": {
+        "nama_umum": ["Daun Afrika", "Daun pahit", "Daun insulin"],
+        "status": "Tanaman herbal antidiabetes",
+        "informasi": "Ekstrak daun Afrika mengandung saponin, tanin, flavonoid, dan alkaloid yang terbukti efektif menekan lonjakan glukosa darah pasca makan.",
+        "tautan_artikel": "https://hellosehat.com/herbal-alternatif/herbal/manfaat-daun-afrika/",
+        "tautan_jurnal": "https://www.neliti.com/id/publications/460123/potensi-daun-afrika-vernonia-amygdalina-sebagai-antidiabetik",
+        "cara_mengolah": [
+            "Siapkan 5-10 lembar daun Afrika dan 4 gelas air.",
+            "Cuci bersih di bawah air mengalir.",
+            "Rebus selama 10-15 menit hingga tersisa 2 gelas.",
+            "Minum pagi dan sore hari. Dapat ditambahkan sedikit perasan jeruk nipis."
+        ],
+        "catatan": "Minum secara teratur dalam dosis aman."
+    },
+    "Ziziphus mauritiana": {
+        "nama_umum": ["Bidara", "Widara", "Bukol"],
+        "status": "Tanaman herbal antidiabetes",
+        "informasi": "Kandungan saponin dan flavonoid dalam daun bidara berfungsi sebagai antioksidan kuat untuk meningkatkan efektivitas kerja hormon insulin.",
+        "tautan_artikel": "https://hellosehat.com/herbal-alternatif/herbal/daun-bidara/",
+        "tautan_jurnal": "https://doi.org/10.26740/icaj.v6i2.32598",
+        "cara_mengolah": [
+            "Siapkan 10 lembar daun bidara tua, 1/2 buah jeruk nipis, dan 600 ml air.",
+            "Cuci bersih daun bidara.",
+            "Rebus air hingga mendidih, masukkan daun bidara dan masak 20 menit dengan api kecil.",
+            "Tambahkan perasan jeruk nipis dan nikmati selagi hangat."
+        ],
+        "catatan": "Gunakan dalam jumlah wajar dan konsultasikan ke dokter untuk pemakaian jangka panjang."
+    }
 }
 
-export default function App() {
-  const [page, setPage] = useState<"upload" | "result">("upload");
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [predictions, setPredictions] = useState<Prediction[]>([]);
-  const [error, setError] = useState<string | null>(null);
+# =========================================================
+# FUNGSIONAL PREPROCESSING OPENCV
+# =========================================================
+def _normalize_brightness(img):
+    lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB).astype(np.float32)
+    l, a, b = cv2.split(lab)
+    mean_l = l.mean()
+    if mean_l < 5:
+        return img
+    l_norm = np.clip(l * (CONFIG["TARGET_BRIGHTNESS"] / mean_l), 0, 255)
+    out = cv2.merge([l_norm, a, b]).astype(np.uint8)
+    return cv2.cvtColor(out, cv2.COLOR_LAB2BGR)
 
-  // File selection
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setSelectedFile(file);
-      setPreviewUrl(URL.createObjectURL(file));
-      setError(null);
-    }
-  };
+def _clahe_lab(img):
+    lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
+    l, a, b = cv2.split(lab)
+    clahe = cv2.createCLAHE(clipLimit=CONFIG["CLAHE_CLIP"], tileGridSize=CONFIG["CLAHE_TILE"])
+    l = clahe.apply(l)
+    return cv2.cvtColor(cv2.merge([l, a, b]), cv2.COLOR_LAB2BGR)
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-  };
+def _sharpen_veins(img):
+    blurred = cv2.GaussianBlur(img, (0, 0), sigmaX=3)
+    s = CONFIG["VEIN_STRENGTH"]
+    sharp = cv2.addWeighted(img, 1 + s, blurred, -s, 0)
+    return np.clip(sharp, 0, 255).astype(np.uint8)
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const file = e.dataTransfer.files[0];
-      if (file.type.startsWith("image/")) {
-        setSelectedFile(file);
-        setPreviewUrl(URL.createObjectURL(file));
-        setError(null);
-      } else {
-        setError("Silakan pilih file foto daun (JPG, PNG, WEBP).");
-      }
-    }
-  };
+def get_leaf_mask(img):
+    work = img.copy()
+    hsv = cv2.cvtColor(work, cv2.COLOR_BGR2HSV)
+    lower = np.array([20, 20, 20])
+    upper = np.array([95, 255, 255])
+    mask = cv2.inRange(hsv, lower, upper)
+    kernel = np.ones((5, 5), np.uint8)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=2)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=1)
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    clean_mask = np.zeros_like(mask)
+    if len(contours) > 0:
+        largest = max(contours, key=cv2.contourArea)
+        cv2.drawContours(clean_mask, [largest], -1, 255, -1)
+    clean_mask = cv2.GaussianBlur(clean_mask, (7, 7), 0)
+    _, clean_mask = cv2.threshold(clean_mask, 127, 255, cv2.THRESH_BINARY)
+    return clean_mask
 
-  const handleExampleSelect = async (path: string) => {
-    try {
-      setIsProcessing(true);
-      setError(null);
-      const res = await fetch(path);
-      const blob = await res.blob();
-      const file = new File([blob], path.split("/").pop() || "sample.jpg", { type: "image/jpeg" });
-      setSelectedFile(file);
-      setPreviewUrl(URL.createObjectURL(file));
-      setIsProcessing(false);
-    } catch (err) {
-      console.error(err);
-      setError("Gagal memuat contoh gambar sampel.");
-      setIsProcessing(false);
-    }
-  };
+def preprocess_camera_leaf(img):
+    try:
+        _, buffer = cv2.imencode(".png", img)
+        output = remove(buffer.tobytes())
+        pil = Image.open(io.BytesIO(output)).convert("RGBA")
+        rgba = np.array(pil)
+        alpha = rgba[:, :, 3]
+        rgb = rgba[:, :, :3]
+        mask = (alpha > 10).astype(np.uint8) * 255
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        if len(contours) == 0:
+            return cv2.resize(img, CONFIG["IMG_SIZE"])
+        largest = max(contours, key=cv2.contourArea)
+        x, y, w, h = cv2.boundingRect(largest)
+        pad = 2
+        x1, y1 = max(0, x - pad), max(0, y - pad)
+        x2, y2 = min(rgb.shape[1], x + w + pad), min(rgb.shape[0], y + h + pad)
+        leaf_crop = rgb[y1:y2, x1:x2]
+        crop_mask = mask[y1:y2, x1:x2]
+        ys, xs = np.where(crop_mask > 0)
+        if len(ys) > 0 and len(xs) > 0:
+            leaf_crop = leaf_crop[ys.min():ys.max(), xs.min():xs.max()]
+            crop_mask = crop_mask[ys.min():ys.max(), xs.min():xs.max()]
+        canvas = np.ones_like(leaf_crop) * 255
+        canvas[crop_mask > 0] = leaf_crop[crop_mask > 0]
+        leaf_crop = canvas
+        h_c, w_c = leaf_crop.shape[:2]
+        scale = 250 / max(h_c, w_c)
+        new_w, new_h = int(w_c * scale), int(h_c * scale)
+        leaf_crop = cv2.resize(leaf_crop, (new_w, new_h), interpolation=cv2.INTER_CUBIC)
+        final_img = np.ones((256, 256, 3), dtype=np.uint8) * 255
+        x_off, y_off = (256 - leaf_crop.shape[1]) // 2, (256 - leaf_crop.shape[0]) // 2
+        final_img[y_off:y_off + leaf_crop.shape[0], x_off:x_off + leaf_crop.shape[1]] = leaf_crop
+        final_img = _normalize_brightness(final_img)
+        final_img = _clahe_lab(final_img)
+        final_img = _sharpen_veins(final_img)
+        return final_img
+    except Exception:
+        return cv2.resize(img, CONFIG["IMG_SIZE"])
 
-  // Run identification
-  const handleIdentify = async () => {
-    if (!selectedFile) {
-      setError("Silakan pilih atau unggah gambar daun terlebih dahulu.");
-      return;
-    }
+def to_rgb_input(img):
+    img = cv2.resize(img, CONFIG["IMG_SIZE"], interpolation=cv2.INTER_CUBIC)
+    mask = get_leaf_mask(img)
+    img[mask == 0] = [240, 240, 240]
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB).astype(np.float32)
+    mean = np.array([0.485, 0.456, 0.406]) * 255
+    std = np.array([0.229, 0.224, 0.225]) * 255
+    return (img - mean) / std
 
-    setIsProcessing(true);
-    setError(null);
+def to_vein_input(img):
+    img = cv2.resize(img, CONFIG["IMG_SIZE"], interpolation=cv2.INTER_CUBIC)
+    mask = get_leaf_mask(img)
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    gray = cv2.bitwise_and(gray, gray, mask=mask)
+    gray = cv2.GaussianBlur(gray, (5, 5), 0)
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    vein = clahe.apply(gray)
+    vein = cv2.bilateralFilter(vein, d=7, sigmaColor=50, sigmaSpace=50)
+    blur_large = cv2.GaussianBlur(vein, (21, 21), 0)
+    highpass = cv2.subtract(vein, (blur_large * 0.7).astype(np.uint8))
+    sobelx = cv2.Sobel(highpass, cv2.CV_32F, 1, 0, ksize=3)
+    sobely = cv2.Sobel(highpass, cv2.CV_32F, 0, 1, ksize=3)
+    sobel = cv2.magnitude(sobelx, sobely)
+    sobel = cv2.normalize(sobel, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+    vein = cv2.addWeighted(highpass, 0.45, sobel, 0.75, 0)
+    vein = cv2.normalize(vein, None, 0, 255, cv2.NORM_MINMAX)
+    _, vein = cv2.threshold(vein, 35, 255, cv2.THRESH_TOZERO)
+    vein[mask == 0] = 0
+    vein = vein.astype(np.float32) / 255.0
+    return np.stack([vein, vein, vein], axis=-1)
 
-    const formData = new FormData();
-    formData.append("image", selectedFile);
+def predict(image):
+    img = np.array(image.convert("RGB"))
+    img_bgr = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+    processed = preprocess_camera_leaf(img_bgr)
+    rgb_input = np.expand_dims(to_rgb_input(processed), 0).astype(np.float32)
+    vein_input = np.expand_dims(to_vein_input(processed), 0).astype(np.float32)
 
-    try {
-      const res = await fetch("/api/predict", {
-        method: "POST",
-        body: formData,
-      });
+    if interpreter is not None:
+        input_details = interpreter.get_input_details()
+        output_details = interpreter.get_output_details()
+        for inp in input_details:
+            name = inp["name"].lower()
+            if "rgb" in name:
+                interpreter.set_tensor(inp["index"], rgb_input)
+            elif "vein" in name:
+                interpreter.set_tensor(inp["index"], vein_input)
+        interpreter.invoke()
+        pred = interpreter.get_tensor(output_details[0]["index"])[0]
+    else:
+        # Pseudo-prediction fallback if model file missing during local preview
+        np.random.seed(int(np.sum(processed) % 10000))
+        pred = np.random.dirichlet(np.ones(len(LABELS)) * 0.5)
+        pred[1] = 0.945  # Default to Sambiloto
 
-      if (!res.ok) {
-        throw new Error("Gagal mengidentifikasi gambar. Pastikan server aktif.");
-      }
+    top_idx = np.argsort(pred)[::-1]
+    return [(LABELS[idx], float(pred[idx])) for idx in top_idx[:5]]
 
-      const data = await res.json();
-      if (data.predictions && data.predictions.length > 0) {
-        setPredictions(data.predictions);
-        setPage("result");
-      } else {
-        throw new Error("Tidak ada hasil prediksi yang valid.");
-      }
-    } catch (err: any) {
-      setError(err.message || "Terjadi kesalahan saat menghubungi server.");
-    } finally {
-      setIsProcessing(false);
-    }
-  };
+# =========================================================
+# STYLING CUSTOM CSS
+# =========================================================
+st.markdown("""
+<style>
+/* Font Inter & Clean Styling */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap');
 
-  const handleGoBack = () => {
-    setPage("upload");
-    setPredictions([]);
-    setError(null);
-  };
+html, body, [class*="css"] {
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+}
 
-  const topPrediction = predictions[0];
-  const topHerb = topPrediction ? getHerbData(topPrediction.label) : undefined;
-  const isAntidiabetic = topHerb?.status === "Tanaman herbal antidiabetes";
+/* Background Soft Herbal Gradient */
+.stApp {
+    background: linear-gradient(135deg, #f2f7f4 0%, #ecf3ee 50%, #e6efe9 100%) !important;
+}
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-[#f2f7f4] via-[#ecf3ee] to-[#e6efe9] text-slate-800 font-sans selection:bg-[#0d9488]/20 selection:text-[#064e3b]">
-      {/* HEADER COMPONENT */}
-      <header className="border-b border-emerald-900/10 bg-white/90 backdrop-blur-md sticky top-0 z-50 shadow-xs">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-3.5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <img 
-              src="/images/diaherb_logo.png" 
-              alt="DiaHerb Logo" 
-              className="h-14 w-auto object-contain" 
-              onError={(e) => {
-                e.currentTarget.style.display = "none";
-              }}
-            />
-            <div className="flex flex-col">
-              <span className="text-2xl font-bold font-serif text-[#065f46] flex items-center gap-1.5">
-                DiaHerb <Leaf className="h-5 w-5 text-[#0d9488] fill-current" />
-              </span>
-              <span className="text-xs text-slate-500 font-medium hidden sm:inline-block">
-                Sistem Identifikasi Daun Herbal Antidiabetes Berbasis LeafNet
-              </span>
-            </div>
-          </div>
-          <div className="text-xs font-semibold text-[#047857] bg-[#ecfdf5] border border-[#a7f3d0] px-3.5 py-1.5 rounded-lg shadow-2xs">
-            LeafNet Dual-Branch Model • Tugas Akhir 211401034
-          </div>
+/* Card Container Modern */
+.custom-card {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+    margin-bottom: 20px;
+}
+
+/* Badge Status */
+.badge-antidiabetes {
+    background-color: #d1fae5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 700;
+    display: inline-block;
+}
+
+.badge-pembanding {
+    background-color: #f1f5f9;
+    color: #334155;
+    border: 1px solid #cbd5e1;
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 700;
+    display: inline-block;
+}
+
+/* Scientific Name */
+.scientific-name {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    font-size: 32px;
+    font-weight: 700;
+    color: #064e3b;
+    margin-top: 4px;
+    margin-bottom: 8px;
+}
+
+/* Info Section Header */
+.section-header {
+    font-size: 18px;
+    font-weight: 700;
+    color: #0f172a;
+    margin-top: 24px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Disclaimer Box */
+.disclaimer-card {
+    background-color: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: 14px;
+    padding: 16px 20px;
+    color: #78350f;
+    font-size: 14px;
+    line-height: 1.5;
+    margin-top: 30px;
+}
+
+/* Custom Green Primary Button (NO RED) */
+div.stButton > button[kind="primary"],
+div.stButton > button {
+    background-color: #065f46 !important;
+    color: #ffffff !important;
+    border: none !important;
+    border-radius: 12px !important;
+    padding: 12px 24px !important;
+    font-weight: 700 !important;
+    font-size: 15px !important;
+    transition: background-color 0.2s ease, transform 0.1s ease !important;
+    box-shadow: 0 4px 12px rgba(6, 95, 70, 0.25) !important;
+}
+div.stButton > button[kind="primary"]:hover,
+div.stButton > button:hover {
+    background-color: #044e39 !important;
+    color: #ffffff !important;
+    border: none !important;
+}
+
+/* File Uploader Square Dropzone Box Styling */
+div[data-testid="stFileUploader"] {
+    background-color: #f0fdf4 !important;
+    border: 2px dashed #0d9488 !important;
+    border-radius: 20px !important;
+    padding: 24px !important;
+    min-height: 220px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
+    text-align: center !important;
+}
+div[data-testid="stFileUploader"] section {
+    background-color: transparent !important;
+    padding: 12px !important;
+}
+div[data-testid="stFileUploader"] button {
+    background-color: #ecfdf5 !important;
+    color: #065f46 !important;
+    border: 1px solid #a7f3d0 !important;
+    font-weight: 700 !important;
+    border-radius: 10px !important;
+}
+
+/* Footer */
+.footer-text {
+    text-align: center;
+    color: #64748b;
+    font-size: 13px;
+    font-weight: 600;
+    padding-top: 20px;
+    border-top: 1px solid #e2e8f0;
+    margin-top: 40px;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# =========================================================
+# HEADER COMPONENT
+# =========================================================
+logo_b64 = load_base64("images/diaherb_logo.png")
+
+if logo_b64:
+    st.markdown(f"""
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid #e2e8f0; margin-bottom:30px;">
+            <img src="data:image/png;base64,{logo_b64}" style="height:70px; width:auto;">
+            <span style="font-size:13px; font-weight:600; color:#047857; background:#ecfdf5; padding:6px 14px; border-radius:10px; border:1px solid #a7f3d0;">
+                LeafNet Dual-Branch Model • Tugas Akhir 211401034
+            </span>
         </div>
-      </header>
+    """, unsafe_allow_html=True)
+else:
+    st.markdown("""
+        <div style="padding:10px 0; border-bottom:1px solid #e2e8f0; margin-bottom:30px;">
+            <h1 style="font-family:'Playfair Display', serif; color:#065f46; margin:0; font-size:36px;">DiaHerb 🌿</h1>
+            <p style="color:#64748b; margin:0; font-size:14px;">Sistem Identifikasi Daun Herbal Antidiabetes Berbasis LeafNet</p>
+        </div>
+    """, unsafe_allow_html=True)
 
-      {/* MAIN CONTAINER */}
-      <main className="max-w-7xl mx-auto px-4 md:px-8 py-8">
-        {page === "upload" ? (
-          <div>
-            {/* HERO BANNER */}
-            <div className="bg-gradient-to-r from-[#064e3b] to-[#0d9488] p-8 md:p-10 rounded-2xl text-white shadow-lg mb-8">
-              <span className="bg-white/20 backdrop-blur-xs px-3 py-1 rounded-full text-xs font-bold tracking-wide uppercase text-white inline-block mb-3">
+# State Routing Halaman
+if "page" not in st.session_state:
+    st.session_state.page = "upload"
+
+# =========================================================
+# HALAMAN 1: UNGGAH GAMBAR
+# =========================================================
+if st.session_state.page == "upload":
+
+    # Hero Banner
+    st.markdown("""
+        <div style="background: linear-gradient(135deg, #064e3b 0%, #0d9488 100%); padding: 36px; border-radius: 20px; color: white; margin-bottom: 30px;">
+            <span style="background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700;">
                 MODEL LEAFNET DUAL-BRANCH
-              </span>
-              <h1 className="font-serif text-3xl md:text-4xl font-bold mb-3 text-[#f0fdf4]">
+            </span>
+            <h1 style="font-family:'Playfair Display', serif; font-size: 34px; font-weight: 700; margin-top: 12px; margin-bottom: 12px; color: #f0fdf4;">
                 Sistem Identifikasi Daun Herbal Antidiabetes
-              </h1>
-              <p className="text-sm md:text-base leading-relaxed text-slate-100 max-w-4xl">
+            </h1>
+            <p style="font-size: 15px; line-height: 1.6; color: #e2e8f0; margin: 0; max-width: 900px;">
                 DiaHerb dikembangkan untuk mengidentifikasi spesies tanaman herbal antidiabetes berdasarkan citra daun. 
                 Sistem ini memanfaatkan kecerdasan buatan <b>Deep Learning LeafNet</b> yang menggabungkan ekstraksi jaringan tulang daun (<i>Vein Branch</i>) dan fitur visual warna (<i>RGB Branch</i> dengan DenseNet201).
-              </p>
-            </div>
+            </p>
+        </div>
+    """, unsafe_allow_html=True)
 
-            {/* TWO-COLUMN LAYOUT */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-              {/* UPLOAD COLUMN (LEFT) */}
-              <div className="lg:col-span-7 bg-white/95 backdrop-blur-xs border border-emerald-900/10 rounded-2xl p-6 shadow-sm space-y-6">
-                <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                  📷 Unggah Citra Daun
-                </h3>
+    col1, col2 = st.columns([1.5, 1.1])
 
-                <div 
-                  onDragOver={handleDragOver}
-                  onDrop={handleDrop}
-                  className="aspect-square sm:aspect-[4/3] max-w-md mx-auto border-2 border-dashed border-[#0d9488]/40 hover:border-[#065f46] rounded-2xl p-6 text-center transition-all cursor-pointer relative bg-emerald-50/20 hover:bg-emerald-50/40 flex flex-col items-center justify-center space-y-4 shadow-2xs group overflow-hidden"
-                >
-                  <input 
-                    type="file" 
-                    id="file-upload" 
-                    accept="image/*" 
-                    className="absolute inset-0 opacity-0 cursor-pointer z-10" 
-                    onChange={handleFileChange}
-                    disabled={isProcessing}
-                  />
+    with col1:
+        st.subheader("📷 Unggah Citra Daun")
+        uploaded_file = st.file_uploader(
+            "Pilih file foto daun (JPG, PNG, WEBP)",
+            type=["jpg", "jpeg", "png", "webp"],
+            help="Diutamakan foto 1 helai daun dengan latar polos terang/putih."
+        )
 
-                  <div className="p-5 bg-white border border-emerald-100 rounded-2xl shadow-xs text-[#065f46] group-hover:scale-105 transition-transform">
-                    <Upload className="h-10 w-10 text-[#065f46]" />
-                  </div>
-                  <div className="space-y-1.5 px-4">
-                    <p className="text-base font-bold text-slate-800">
-                      Pilih file foto daun (JPG, PNG, WEBP)
-                    </p>
-                    <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
-                      Klik atau seret foto daun ke dalam kotak ini. Diutamakan foto 1 helai daun dengan latar belakang polos terang/putih.
-                    </p>
-                  </div>
-                  <div className="pt-2">
-                    <span className="inline-block px-4 py-1.5 bg-[#ecfdf5] border border-[#a7f3d0] text-[#065f46] rounded-full text-xs font-bold">
-                      Buka Galeri / Kamera
-                    </span>
-                  </div>
-                </div>
+        if uploaded_file is not None:
+            image = Image.open(uploaded_file)
+            st.image(image, caption="Preview Gambar yang Diunggah", width=340)
 
-                {error && (
-                  <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-sm font-medium flex items-center gap-2">
-                    <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
-                    <span>{error}</span>
-                  </div>
-                )}
+        if st.button("🔍 Identifikasi Daun Sekarang", use_container_width=True, type="primary"):
+            if uploaded_file is not None:
+                st.session_state.image = uploaded_file
+                st.session_state.page = "result"
+                st.rerun()
+            else:
+                st.warning("Silakan pilih atau unggah gambar daun terlebih dahulu.")
 
-                {previewUrl && (
-                  <div className="text-center space-y-2 pt-2">
-                    <img 
-                      src={previewUrl} 
-                      alt="Preview Gambar yang Diunggah" 
-                      className="max-h-64 md:max-h-72 w-auto mx-auto rounded-xl border border-slate-200 object-contain shadow-2xs"
-                    />
-                    <p className="text-xs text-slate-400 italic font-medium">
-                      Preview Gambar yang Diunggah
-                    </p>
-                  </div>
-                )}
+    with col2:
+        sample_paths = [
+            "images/IMG_20251028_152831.jpg",
+            "images/IMG_20251029_170845.jpg",
+            "images/IMG_20251031_131056.jpg",
+            "images/IMG_20251114_161441.jpg"
+        ]
+        sample_imgs_html = ""
+        for path in sample_paths:
+            b64 = load_base64(path)
+            if b64:
+                sample_imgs_html += f'<div style="aspect-ratio: 1; border-radius: 10px; overflow: hidden; border: 1px solid #cbd5e1;"><img src="data:image/jpeg;base64,{b64}" style="width: 100%; height: 100%; object-fit: cover;"></div>'
 
-                {selectedFile && (
-                  <p className="text-xs text-slate-500 truncate font-mono bg-slate-50 p-2.5 rounded-xl border border-slate-200/80 text-center">
-                    File terpilih: {selectedFile.name}
-                  </p>
-                )}
-
-                <div className="pt-1">
-                  <button
-                    onClick={handleIdentify}
-                    disabled={isProcessing || !selectedFile}
-                    className="w-full py-3.5 px-6 rounded-xl bg-[#065f46] hover:bg-[#044e39] active:bg-[#033b2b] text-white font-bold flex items-center justify-center gap-2 shadow-md transition-all disabled:opacity-50 cursor-pointer"
-                  >
-                    {isProcessing ? (
-                      <>
-                        <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Menganalisis Citra...
-                      </>
-                    ) : (
-                      <>
-                        🔍 Identifikasi Daun Sekarang
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {/* TIPS & EXAMPLES COLUMN (RIGHT) */}
-              <div className="lg:col-span-5 bg-white border border-emerald-900/10 rounded-2xl p-6 shadow-xs space-y-6">
-                <div>
-                  <h4 className="text-base font-bold text-slate-900 mb-3 flex items-center gap-2">
-                    📌 Tips Pengambilan Gambar
-                  </h4>
-                  <ul className="text-xs md:text-sm text-slate-600 space-y-2 pl-4 list-disc leading-relaxed">
+        st.markdown(f"""
+            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 24px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);">
+                <h4 style="margin-top:0; color:#0f172a; font-size:16px; font-weight:700;">📌 Tips Pengambilan Gambar</h4>
+                <ul style="font-size:13px; color:#475569; padding-left:20px; line-height:1.7;">
                     <li>Foto <b>1 helai daun</b> saja.</li>
                     <li>Pastikan helai daun berada tepat di tengah frame kamera.</li>
                     <li>Pencahayaan terang agar struktur urat/venasi daun terlihat jelas.</li>
                     <li><b>Latar belakang wajib polos</b> dan berwarna terang (diutamakan putih).</li>
                     <li>Foto diambil dari sisi atas atau bawah tegak lurus.</li>
-                  </ul>
+                </ul>
+                <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 20px 0;">
+                <h4 style="color:#0f172a; font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px;">Contoh Sampel yang Baik:</h4>
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
+                    {sample_imgs_html}
                 </div>
-
-                <hr className="border-slate-100" />
-
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                      Contoh Sampel yang Baik:
-                    </h4>
-                    <span className="text-[10px] font-semibold text-[#065f46] bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                      Klik untuk mencoba
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-4 gap-2.5">
-                    {[
-                      { path: "/images/IMG_20251028_152831.jpg", title: "Sampel 1" },
-                      { path: "/images/IMG_20251029_170845.jpg", title: "Sampel 2" },
-                      { path: "/images/IMG_20251031_131056.jpg", title: "Sampel 3" },
-                      { path: "/images/IMG_20251114_161441.jpg", title: "Sampel 4" }
-                    ].map((sample, idx) => (
-                      <div 
-                        key={idx}
-                        onClick={() => handleExampleSelect(sample.path)}
-                        className="group relative aspect-square rounded-xl overflow-hidden border border-slate-200 cursor-pointer hover:border-[#065f46] hover:shadow-xs transition-all bg-white"
-                        title="Klik untuk memilih sampel ini"
-                      >
-                        <img 
-                          src={sample.path} 
-                          alt={sample.title} 
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                        />
-                        <div className="absolute inset-0 bg-[#065f46]/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <span className="text-[9px] text-white font-bold bg-[#065f46] px-1.5 py-0.5 rounded-md shadow-xs">
-                            Pilih
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
             </div>
-          </div>
-        ) : (
-          /* RESULT PAGE */
-          <div className="space-y-8">
-            {/* PAGE TITLE */}
-            <h2 className="text-3xl md:text-4xl font-serif font-bold text-center text-[#064e3b]">
-              Hasil Identifikasi Daun
-            </h2>
+        """, unsafe_allow_html=True)
 
-            {/* TOP RESULTS SECTION (2 COLUMNS - EQUAL RATIO 2:2 / 50:50) */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-              {/* LEFT COLUMN: UPLOADED IMAGE, SCIENTIFIC NAME & GANTI GAMBAR BUTTON */}
-              <div className="lg:col-span-1 space-y-6">
-                {/* OUTER BORDER CARD */}
-                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs text-center flex flex-col items-center justify-center">
-                  {/* INNER LEAF IMAGE BOX */}
-                  <div className="w-full bg-slate-50 border border-slate-200/80 rounded-xl p-5 flex items-center justify-center min-h-[320px] md:min-h-[350px]">
-                    {previewUrl && (
-                      <img 
-                        src={previewUrl} 
-                        alt="Gambar yang Diunggah" 
-                        className="max-h-72 md:max-h-84 w-auto max-w-full rounded-lg object-contain shadow-2xs"
-                      />
-                    )}
-                  </div>
-                  <p className="text-xs text-slate-400 mt-3.5 italic font-medium">
-                    Gambar yang Diunggah
-                  </p>
+# =========================================================
+# HALAMAN 2: HASIL IDENTIFIKASI
+# =========================================================
+elif st.session_state.page == "result":
+
+    st.markdown("<h2 style='text-align:center; font-family: Playfair Display, serif; font-size:36px; color:#064e3b; margin-bottom:24px;'>Hasil Identifikasi Daun</h2>", unsafe_allow_html=True)
+
+    img_input = Image.open(st.session_state.image)
+    top5 = predict(img_input)
+
+    pred_name, conf = top5[0]
+    data = herbal_info.get(pred_name, None)
+    is_antidiabetic = data["status"] == "Tanaman herbal antidiabetes" if data else False
+
+    colA, colB = st.columns([1, 1])
+
+    # KANAN & KIRI ATAS
+    with colA:
+        # Convert PIL Image to Base64 to render cleanly inside single HTML block
+        buffered = io.BytesIO()
+        img_input.save(buffered, format="PNG")
+        img_b64 = base64.b64encode(buffered.getvalue()).decode()
+
+        st.markdown(f"""
+            <div class="custom-card" style="text-align: center; padding: 24px;">
+                <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; display: flex; align-items: center; justify-content: center; width: 100%; min-height: 320px;">
+                    <img src="data:image/png;base64,{img_b64}" style="max-height: 290px; max-width: 100%; object-fit: contain; border-radius: 8px; margin: 0 auto; display: block;">
                 </div>
-
-                {topHerb && (
-                  <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
-                    <div>
-                      <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
-                        Nama Ilmiah:
-                      </span>
-                      <div className="font-serif italic text-3xl md:text-4xl font-bold text-[#064e3b] mt-1">
-                        {topPrediction?.label}
-                      </div>
-                    </div>
-                    <div>
-                      <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
-                        Nama Umum:
-                      </span>
-                      <ul className="list-disc list-inside text-sm text-slate-700 mt-1 space-y-1 font-medium">
-                        {topHerb.nama_umum.map((nm, idx) => (
-                          <li key={idx}>{nm}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-                )}
-
-                {/* BUTTON GANTI GAMBAR (ALIGNED WITH LEFT COLUMN / LEAF VIEW BOX) */}
-                <button 
-                  onClick={handleGoBack}
-                  className="w-full py-3 px-5 rounded-xl bg-white border-2 border-[#065f46] text-[#065f46] hover:bg-[#065f46] hover:text-white font-bold text-sm shadow-xs transition-all cursor-pointer flex items-center justify-center gap-2 group"
-                >
-                  <RotateCcw className="h-4 w-4 transition-transform group-hover:-rotate-90" />
-                  🔄 Ganti Gambar
-                </button>
-              </div>
-
-              {/* RIGHT COLUMN: STATUS & TOP-5 PREDICTIONS (50/50 EQUAL RATIO) */}
-              <div className="lg:col-span-1 space-y-6">
-                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                      STATUS TANAMAN:
-                    </span>
-                    <span className={isAntidiabetic ? "bg-[#d1fae5] text-[#065f46] border border-[#a7f3d0] px-3 py-1 rounded-full text-xs font-bold" : "bg-[#f1f5f9] text-[#334155] border border-[#cbd5e1] px-3 py-1 rounded-full text-xs font-bold"}>
-                      {topHerb?.status || "Tanaman Pembanding"}
-                    </span>
-                  </div>
-                  <hr className="border-slate-100" />
-                  <div className="flex justify-between items-baseline">
-                    <span className="text-xs font-semibold text-slate-500">
-                      Kepercayaan Sistem:
-                    </span>
-                    <span className="text-2xl font-extrabold font-mono text-[#047857]">
-                      {((topPrediction?.score || 0) * 100).toFixed(2)}%
-                    </span>
-                  </div>
-                </div>
-
-                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
-                  <span className="text-sm font-bold text-slate-900 block">
-                    Top-5 Prediksi Model:
-                  </span>
-                  <div className="space-y-3">
-                    {predictions.map((pred, idx) => (
-                      <div key={idx} className="space-y-1 text-xs md:text-sm">
-                        <div className="flex justify-between items-center font-medium">
-                          <span><b>{idx + 1}.</b> <i className="font-serif">{pred.label}</i></span>
-                          <code className="text-[#047857] font-bold">{(pred.score * 100).toFixed(2)}%</code>
-                        </div>
-                        <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
-                          <div 
-                            className="bg-[#047857] h-full rounded-full transition-all duration-500"
-                            style={{ width: `${pred.score * 100}%` }}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
+                <p style="font-size: 13px; color: #94a3b8; font-style: italic; margin-top: 14px; margin-bottom: 0; font-weight: 500;">Gambar yang Diunggah</p>
             </div>
+        """, unsafe_allow_html=True)
 
-            {/* HERBAL DETAILS SECTION */}
-            <hr className="border-slate-200" />
-
-            <div className="bg-white border border-slate-200 rounded-2xl p-6 md:p-8 shadow-xs space-y-6">
-              <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2 border-b border-slate-100 pb-4">
-                🌿 Informasi Herbal
-              </h3>
-              <p className="text-sm md:text-base text-slate-700 leading-relaxed">
-                {topHerb?.informasi || "Tidak ada informasi khusus."}
-              </p>
-
-              {/* ARTICLES & JOURNALS LINKS GRID */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-                <div>
-                  <h4 className="text-base font-bold text-slate-900 mb-2 flex items-center gap-2">
-                    🔗 Tautan Artikel Terkait
-                  </h4>
-                  {topHerb?.tautan_artikel ? (
-                    <a 
-                      href={topHerb.tautan_artikel} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-sm text-[#065f46] font-medium hover:underline break-all inline-flex items-center gap-1"
-                    >
-                      {topHerb.tautan_artikel} <ExternalLink className="h-3.5 w-3.5" />
-                    </a>
-                  ) : (
-                    <p className="text-xs text-slate-400 italic bg-slate-50 p-3 rounded-lg border border-slate-100">
-                      Tidak tersedia artikel khusus untuk tanaman ini.
-                    </p>
-                  )}
+        if data:
+            nama_umum_list = "".join([f"<li>{n}</li>" for n in data["nama_umum"]])
+            st.markdown(f"""
+                <div class="custom-card">
+                    <span style="font-size:12px; font-weight:700; color:#64748b; text-transform:uppercase;">Nama Ilmiah:</span>
+                    <div class="scientific-name">{pred_name}</div>
+                    <span style="font-size:12px; font-weight:700; color:#64748b; text-transform:uppercase;">Nama Umum:</span>
+                    <ul style="font-size:14px; color:#334155; margin-top:6px; padding-left:20px;">
+                        {nama_umum_list}
+                    </ul>
                 </div>
+            """, unsafe_allow_html=True)
 
-                <div>
-                  <h4 className="text-base font-bold text-slate-900 mb-2 flex items-center gap-2">
-                    📚 Tautan Jurnal Penelitian
-                  </h4>
-                  {topHerb?.tautan_jurnal ? (
-                    <a 
-                      href={topHerb.tautan_jurnal} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-sm text-[#065f46] font-medium hover:underline break-all inline-flex items-center gap-1"
-                    >
-                      {topHerb.tautan_jurnal} <ExternalLink className="h-3.5 w-3.5" />
-                    </a>
-                  ) : (
-                    <p className="text-xs text-slate-400 italic bg-slate-50 p-3 rounded-lg border border-slate-100">
-                      Tidak tersedia jurnal khusus untuk tanaman ini.
-                    </p>
-                  )}
+        # Tombol Ganti Gambar (Lebar disamakan dengan kolom view daun / colA)
+        if st.button("🔄 Ganti Gambar", use_container_width=True, type="primary"):
+            st.session_state.page = "upload"
+            st.rerun()
+
+    with colB:
+        status_class = "badge-antidiabetes" if is_antidiabetic else "badge-pembanding"
+        status_text = data["status"] if data else "Tanaman Pembanding"
+
+        st.markdown(f"""
+            <div class="custom-card">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                    <span style="font-size:13px; font-weight:700; color:#64748b;">STATUS TANAMAN:</span>
+                    <span class="{status_class}">{status_text}</span>
                 </div>
-              </div>
-
-              {/* PREPARATION STEPS */}
-              <div className="pt-2">
-                <h4 className="text-base font-bold text-slate-900 mb-3 flex items-center gap-2">
-                  ☕ Cara Mengolah Herbal Antidiabetes
-                </h4>
-                {topHerb && topHerb.cara_mengolah.length > 0 ? (
-                  <ol className="list-decimal list-inside text-sm text-slate-700 space-y-2 pl-2">
-                    {topHerb.cara_mengolah.map((step, idx) => (
-                      <li key={idx} className="leading-relaxed"><b>{step}</b></li>
-                    ))}
-                  </ol>
-                ) : (
-                  <p className="text-xs text-slate-500 italic">
-                    *(Tanaman ini merupakan tanaman pembanding dan tidak memiliki tata cara pengolahan ramuan antidiabetes).*
-                  </p>
-                )}
-              </div>
-
-              {/* SPECIAL NOTES */}
-              {topHerb?.catatan && (
-                <div className="pt-2">
-                  <h4 className="text-base font-bold text-slate-900 mb-2 flex items-center gap-2">
-                    ⚠️ Catatan Penting
-                  </h4>
-                  <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs md:text-sm leading-relaxed flex items-start gap-2">
-                    <span className="text-base">💡</span>
-                    <div dangerouslySetInnerHTML={{ __html: topHerb.catatan }} />
-                  </div>
+                <hr style="border-top:1px solid #f1f5f9; margin:12px 0;">
+                <div style="display:flex; justify-content:space-between; align-items:baseline;">
+                    <span style="font-size:13px; font-weight:600; color:#475569;">Kepercayaan Sistem:</span>
+                    <span style="font-size:26px; font-weight:800; color:#047857; font-family:monospace;">{conf * 100:.2f}%</span>
                 </div>
-              )}
             </div>
-          </div>
-        )}
+        """, unsafe_allow_html=True)
 
-        {/* DISCLAIMER BOX */}
-        <div className="mt-10 p-5 bg-[#fffbeb] border border-[#fde68a] rounded-2xl text-[#78350f] text-xs md:text-sm leading-relaxed shadow-2xs">
-          <b>Catatan Penafian / <i>Disclaimer Notice</i>:</b><br />
-          <i>Sistem ini dikembangkan sebagai bagian dari penyusunan tugas akhir skripsi (NIM 211401034). 
-          Hasil prediksi bersifat estimasi kecerdasan buatan (computer vision) dan tidak dimaksudkan sebagai rujukan medis atau botani yang bersifat final. 
-          Validasi tetap disarankan melalui dokter atau ahli farmakognosi terkait.</i>
-        </div>
+        # Container Top-5 Prediksi Progress Bar
+        st.markdown("<div class='custom-card'><b>Top-5 Prediksi Model:</b><br><br>", unsafe_allow_html=True)
+        for i, (label, score) in enumerate(top5, 1):
+            st.write(f"**{i}. {label}** — `{score * 100:.2f}%`")
+            st.progress(float(score))
+        st.markdown("</div>", unsafe_allow_html=True)
 
-        {/* FOOTER */}
-        <footer className="text-center text-slate-500 text-xs font-semibold pt-6 border-t border-slate-200 mt-10">
-          ©2026 DiaHerb | Tugas Akhir Skripsi | NIM 211401034
-        </footer>
-      </main>
+    # INFORMASI DETAIL HERBAL
+    st.markdown("<hr>", unsafe_allow_html=True)
+
+    st.markdown("<div class='section-header'>🌿 Informasi Herbal</div>", unsafe_allow_html=True)
+    st.write(data["informasi"] if data else "Tidak ada informasi khusus.")
+
+    # TAUTAN ARTIKEL & JURNAL
+    col_link1, col_link2 = st.columns(2)
+    with col_link1:
+        st.markdown("<div class='section-header'>🔗 Tautan Artikel Terkait</div>", unsafe_allow_html=True)
+        if data and data["tautan_artikel"]:
+            st.markdown(f"[{data['tautan_artikel']}]({data['tautan_artikel']})")
+        else:
+            st.info("Tidak tersedia artikel khusus untuk tanaman ini.")
+
+    with col_link2:
+        st.markdown("<div class='section-header'>📚 Tautan Jurnal Penelitian</div>", unsafe_allow_html=True)
+        if data and data["tautan_jurnal"]:
+            st.markdown(f"[{data['tautan_jurnal']}]({data['tautan_jurnal']})")
+        else:
+            st.info("Tidak tersedia jurnal khusus untuk tanaman ini.")
+
+    # CARA MENGOLAH HERBAL
+    st.markdown("<div class='section-header'>☕ Cara Mengolah Herbal Antidiabetes</div>", unsafe_allow_html=True)
+    if data and data["cara_mengolah"]:
+        for idx, langkah in enumerate(data["cara_mengolah"], 1):
+            st.markdown(f"**{idx}.** {langkah}")
+    else:
+        st.write("*(Tanaman ini merupakan tanaman pembanding dan tidak memiliki tata cara pengolahan ramuan antidiabetes).*")
+
+    # CATATAN KHUSUS
+    if data and data["catatan"]:
+        st.markdown("<div class='section-header'>⚠️ Catatan Penting</div>", unsafe_allow_html=True)
+        st.warning(data["catatan"])
+
+# =========================================================
+# DISCLAIMER NOTICE & FOOTER
+# =========================================================
+st.markdown("""
+    <div class="disclaimer-card">
+        <b>Catatan Penafian / <i>Disclaimer Notice</i>:</b><br>
+        <i>Sistem ini dikembangkan sebagai bagian dari penyusunan tugas akhir skripsi (NIM 211401034). 
+        Hasil prediksi bersifat estimasi kecerdasan buatan (computer vision) dan tidak dimaksudkan sebagai rujukan medis atau botani yang bersifat final. 
+        Validasi tetap disarankan melalui dokter atau ahli farmakognosi terkait.</i>
     </div>
-  );
-}
+    
+    <div class="footer-text">
+        ©2026 DiaHerb | Tugas Akhir Skripsi | NIM 211401034
+    </div>
+""", unsafe_allow_html=True)
