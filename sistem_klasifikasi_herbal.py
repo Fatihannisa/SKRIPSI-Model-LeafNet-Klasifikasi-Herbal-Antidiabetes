@@ -289,7 +289,7 @@ herbal_info = {
             "Rebus air hingga mendidih, masukkan daun bidara dan masak 20 menit dengan api kecil.",
             "Tambahkan perasan jeruk nipis dan nikmati selagi hangat."
         ],
-        "catatan": "Jeruk nipis membantu menambah rasa segar sekaligus mempermudah ekstraksi senyawa aktif."
+        "catatan": "Gunakan dalam jumlah wajar dan konsultasikan ke dokter untuk pemakaian jangka panjang."
     }
 }
 
@@ -696,7 +696,7 @@ elif st.session_state.page == "result":
 
     # KANAN & KIRI ATAS
     with colA:
-        st.image(img_input, caption="Gambar yang Diunggah", width=250)
+        st.image(img_input, caption="Gambar yang Diunggah", width=340)
 
         if data:
             nama_umum_list = "".join([f"<li>{n}</li>" for n in data["nama_umum"]])
@@ -774,7 +774,7 @@ elif st.session_state.page == "result":
     # CATATAN KHUSUS
     if data and data["catatan"]:
         st.markdown("<div class='section-header'>⚠️ Catatan Penting</div>", unsafe_allow_html=True)
-        st.warning(data["catatan"], icon="💡")
+        st.warning(data["catatan"])
 
 # =========================================================
 # DISCLAIMER NOTICE & FOOTER
