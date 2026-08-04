@@ -637,7 +637,17 @@ if st.session_state.page == "upload":
 
         if uploaded_file is not None:
             image = Image.open(uploaded_file)
-            st.image(image, caption="Preview Gambar yang Diunggah", width=320)
+            buffered = io.BytesIO()
+            image.save(buffered, format="PNG")
+            img_preview_b64 = base64.b64encode(buffered.getvalue()).decode()
+            st.markdown(f"""
+                <div style="background-color: #f0fdf4; border: 2px dashed #0d9488; border-radius: 16px; padding: 16px; text-align: center; margin-top: 12px; margin-bottom: 16px;">
+                    <div style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; display: flex; align-items: center; justify-content: center; min-height: 220px;">
+                        <img src="data:image/png;base64,{img_preview_b64}" style="max-height: 220px; max-width: 100%; object-fit: contain; border-radius: 8px;">
+                    </div>
+                    <p style="font-size: 12px; color: #047857; font-weight: 600; margin-top: 10px; margin-bottom: 0;">✓ Gambar Berhasil Diunggah</p>
+                </div>
+            """, unsafe_allow_html=True)
 
         if st.button("🔍 Identifikasi Daun Sekarang", use_container_width=True, type="primary"):
             if uploaded_file is not None:
@@ -692,7 +702,7 @@ elif st.session_state.page == "result":
     data = herbal_info.get(pred_name, None)
     is_antidiabetic = data["status"] == "Tanaman herbal antidiabetes" if data else False
 
-    colA, colB = st.columns([1.4, 1.1])
+    colA, colB = st.columns([2, 3])
 
     # KANAN & KIRI ATAS
     with colA:
