@@ -683,11 +683,6 @@ if st.session_state.page == "upload":
 # =========================================================
 elif st.session_state.page == "result":
 
-    # Tombol Kembali
-    if st.button("⬅️ Kembali ke Halaman Unggah"):
-        st.session_state.page = "upload"
-        st.rerun()
-
     st.markdown("<h2 style='text-align:center; font-family: Playfair Display, serif; font-size:36px; color:#064e3b; margin-bottom:24px;'>Hasil Identifikasi Daun</h2>", unsafe_allow_html=True)
 
     img_input = Image.open(st.session_state.image)
@@ -740,6 +735,11 @@ elif st.session_state.page == "result":
             st.write(f"**{i}. {label}** — `{score * 100:.2f}%`")
             st.progress(float(score))
         st.markdown("</div>", unsafe_allow_html=True)
+
+    # Tombol Ganti Gambar
+    if st.button("🔄 Ganti Gambar", use_container_width=True, type="primary"):
+        st.session_state.page = "upload"
+        st.rerun()
 
     # INFORMASI DETAIL HERBAL
     st.markdown("<hr>", unsafe_allow_html=True)
