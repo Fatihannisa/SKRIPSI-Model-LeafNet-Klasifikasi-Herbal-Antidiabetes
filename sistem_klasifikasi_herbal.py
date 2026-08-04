@@ -696,7 +696,17 @@ elif st.session_state.page == "result":
 
     # KANAN & KIRI ATAS
     with colA:
-        st.image(img_input, caption="Gambar yang Diunggah", width=340)
+        # Outer card container box & Inner leaf image container
+        st.markdown("""
+            <div class="custom-card" style="text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px;">
+                <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; display: flex; align-items: center; justify-content: center; width: 100%; min-height: 260px;">
+        """, unsafe_allow_html=True)
+        st.image(img_input, caption="", width=300)
+        st.markdown("""
+                </div>
+                <p style="font-size: 12px; color: #94a3b8; font-style: italic; margin-top: 12px; margin-bottom: 0;">Gambar yang Diunggah</p>
+            </div>
+        """, unsafe_allow_html=True)
 
         if data:
             nama_umum_list = "".join([f"<li>{n}</li>" for n in data["nama_umum"]])
