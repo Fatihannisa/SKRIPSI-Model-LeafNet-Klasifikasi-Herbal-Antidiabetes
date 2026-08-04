@@ -750,26 +750,25 @@ elif st.session_state.page == "result":
         top5_items_html = ""
         for i, (label, score) in enumerate(top5, 1):
             pct = score * 100
-            top5_items_html += f"""
-                <div style="margin-bottom: 12px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 600; margin-bottom: 4px; color: #1e293b;">
-                        <span><b>{i}.</b> <i style="font-family: 'Playfair Display', serif;">{label}</i></span>
-                        <code style="color: #047857; font-weight: 700; font-size: 13px; font-family: monospace;">{pct:.2f}%</code>
-                    </div>
-                    <div style="width: 100%; background-color: #f1f5f9; height: 10px; border-radius: 999px; overflow: hidden;">
-                        <div style="width: {pct:.2f}%; background-color: #047857; height: 100%; border-radius: 999px;"></div>
-                    </div>
-                </div>
-            """
+            top5_items_html += (
+                f'<div style="margin-bottom: 12px;">'
+                f'<div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 600; margin-bottom: 4px; color: #1e293b;">'
+                f'<span><b>{i}.</b> <i style="font-family: \'Playfair Display\', serif;">{label}</i></span>'
+                f'<code style="color: #047857; font-weight: 700; font-size: 13px; font-family: monospace;">{pct:.2f}%</code>'
+                f'</div>'
+                f'<div style="width: 100%; background-color: #f1f5f9; height: 10px; border-radius: 999px; overflow: hidden;">'
+                f'<div style="width: {pct:.2f}%; background-color: #047857; height: 100%; border-radius: 999px;"></div>'
+                f'</div>'
+                f'</div>'
+            )
 
-        st.markdown(f"""
-            <div class="custom-card">
-                <span style="font-size: 14px; font-weight: 700; color: #0f172a; display: block; margin-bottom: 16px;">
-                    Top-5 Prediksi Model:
-                </span>
-                {top5_items_html}
-            </div>
-        """, unsafe_allow_html=True)
+        st.markdown(
+            f'<div class="custom-card">'
+            f'<span style="font-size: 14px; font-weight: 700; color: #0f172a; display: block; margin-bottom: 16px;">Top-5 Prediksi Model:</span>'
+            f'{top5_items_html}'
+            f'</div>',
+            unsafe_allow_html=True
+        )
 
     # INFORMASI DETAIL HERBAL
     st.markdown("<hr>", unsafe_allow_html=True)
