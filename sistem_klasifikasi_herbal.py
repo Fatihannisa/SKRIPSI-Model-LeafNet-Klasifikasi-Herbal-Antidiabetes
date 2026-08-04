@@ -696,7 +696,7 @@ elif st.session_state.page == "result":
 
     # KANAN & KIRI ATAS
     with colA:
-        st.image(img_input, caption="Gambar yang Diunggah", use_container_width=True)
+        st.image(img_input, caption="Gambar yang Diunggah", width=250)
 
         if data:
             nama_umum_list = "".join([f"<li>{n}</li>" for n in data["nama_umum"]])
@@ -710,6 +710,11 @@ elif st.session_state.page == "result":
                     </ul>
                 </div>
             """, unsafe_allow_html=True)
+
+        # Tombol Ganti Gambar (Lebar disamakan dengan kolom view daun / colA)
+        if st.button("🔄 Ganti Gambar", use_container_width=True, type="primary"):
+            st.session_state.page = "upload"
+            st.rerun()
 
     with colB:
         status_class = "badge-antidiabetes" if is_antidiabetic else "badge-pembanding"
@@ -735,11 +740,6 @@ elif st.session_state.page == "result":
             st.write(f"**{i}. {label}** — `{score * 100:.2f}%`")
             st.progress(float(score))
         st.markdown("</div>", unsafe_allow_html=True)
-
-    # Tombol Ganti Gambar
-    if st.button("🔄 Ganti Gambar", use_container_width=True, type="primary"):
-        st.session_state.page = "upload"
-        st.rerun()
 
     # INFORMASI DETAIL HERBAL
     st.markdown("<hr>", unsafe_allow_html=True)
