@@ -613,7 +613,10 @@ if st.session_state.page == "upload":
     # Hero Banner
     st.markdown("""
         <div style="background: linear-gradient(135deg, #064e3b 0%, #0d9488 100%); padding: 36px; border-radius: 20px; color: white; margin-bottom: 30px;">
-            <h1 style="font-family:'Playfair Display', serif; font-size: 34px; font-weight: 700; margin-top: 2px; margin-bottom: 12px; color: #f0fdf4;">
+            <span style="background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 20px; font-size: 13px; font-weight: 700;">
+                MODEL LEAFNET DUAL-BRANCH
+            </span>
+            <h1 style="font-family:'Playfair Display', serif; font-size: 34px; font-weight: 700; margin-top: 12px; margin-bottom: 12px; color: #f0fdf4;">
                 Sistem Identifikasi Daun Herbal Antidiabetes
             </h1>
             <p style="font-size: 16px; line-height: 1.7; color: #e2e8f0; margin: 0; max-width: 900px;">
@@ -622,6 +625,12 @@ if st.session_state.page == "upload":
             </p>
         </div>
     """, unsafe_allow_html=True)
+
+    with st.expander("🖼️ Lihat Rancangan Prototype UI Mockup"):
+        proto_b64 = load_base64("images/ui_prototype.jpg")
+        if proto_b64:
+            st.markdown(f'<img src="data:image/jpeg;base64,{proto_b64}" style="width:100%; border-radius:12px; border:1px solid #cbd5e1;">', unsafe_allow_html=True)
+            st.caption("Gambar Prototype UI Mockup - DiaHerb")
 
     col1, col2 = st.columns([1.5, 1.1])
 
