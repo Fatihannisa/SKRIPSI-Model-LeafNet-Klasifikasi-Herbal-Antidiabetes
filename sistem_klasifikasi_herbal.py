@@ -314,7 +314,7 @@ def _clahe_lab(img):
     return cv2.cvtColor(cv2.merge([l, a, b]), cv2.COLOR_LAB2BGR)
 
 def _sharpen_veins(img):
-    blurred = cv2.GaussianBlur(img, (0, 0), sigmaX=3)
+    blurred = cv2.GaussianBlur(img, (0, 0), sigmaX=2)
     s = CONFIG["VEIN_STRENGTH"]
     sharp = cv2.addWeighted(img, 1 + s, blurred, -s, 0)
     return np.clip(sharp, 0, 255).astype(np.uint8)
@@ -366,6 +366,20 @@ def preprocess_camera_leaf(img):
         scale = 250 / max(h_c, w_c)
         new_w, new_h = int(w_c * scale), int(h_c * scale)
         leaf_crop = cv2.resize(leaf_crop, (new_w, new_h), interpolation=cv2.INTER_CUBIC)
+
+        # Penanganan khusus daun berukuran kecil
+        if new_w < 180 or new_h < 180:
+            extra_scale = 1.25
+            new_w = int(new_w * extra_scale)
+            new_h = int(new_h * extra_scale)
+
+            if new_w > 256 or new_h > 256:
+                ratio = min(256 / new_w, 256 / new_h) * 0.98
+                new_w = int(new_w * ratio)
+                new_h = int(new_h * ratio)
+
+            leaf_crop = cv2.resize(leaf_crop, (new_w, new_h), interpolation=cv2.INTER_CUBIC)
+            
         final_img = np.ones((256, 256, 3), dtype=np.uint8) * 255
         x_off, y_off = (256 - leaf_crop.shape[1]) // 2, (256 - leaf_crop.shape[0]) // 2
         final_img[y_off:y_off + leaf_crop.shape[0], x_off:x_off + leaf_crop.shape[1]] = leaf_crop
@@ -379,7 +393,7 @@ def preprocess_camera_leaf(img):
 def to_rgb_input(img):
     img = cv2.resize(img, CONFIG["IMG_SIZE"], interpolation=cv2.INTER_CUBIC)
     mask = get_leaf_mask(img)
-    img[mask == 0] = [240, 240, 240]
+    img[mask == 0] = [255, 255, 255]
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB).astype(np.float32)
     mean = np.array([0.485, 0.456, 0.406]) * 255
     std = np.array([0.229, 0.224, 0.225]) * 255
