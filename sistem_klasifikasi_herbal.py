@@ -51,10 +51,10 @@ LABELS = [
 
 CONFIG = {
     "IMG_SIZE": (256, 256),
-    "TARGET_BRIGHTNESS": 110,
-    "CLAHE_CLIP": 4.0,
+    "TARGET_BRIGHTNESS": 145,
+    "CLAHE_CLIP": 3.5,
     "CLAHE_TILE": (4, 4),
-    "VEIN_STRENGTH": 0.4
+    "VEIN_STRENGTH": 1.2
 }
 
 # =========================================================
@@ -314,26 +314,27 @@ def _clahe_lab(img):
     return cv2.cvtColor(cv2.merge([l, a, b]), cv2.COLOR_LAB2BGR)
 
 def _sharpen_veins(img):
-    blurred = cv2.GaussianBlur(img, (0, 0), sigmaX=2)
+    blurred = cv2.GaussianBlur(img, (0, 0), sigmaX=3)
     s = CONFIG["VEIN_STRENGTH"]
     sharp = cv2.addWeighted(img, 1 + s, blurred, -s, 0)
     return np.clip(sharp, 0, 255).astype(np.uint8)
 
-def _clean_background(img, threshold=230):
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    img[gray > threshold] = [255,255,255]
-    return img
-
 def get_leaf_mask(img):
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    _, mask = cv2.threshold(gray, 240, 255, cv2.THRESH_BINARY_INV)
-    kernel = np.ones((3,3), np.uint8)
+    work = img.copy()
+    hsv = cv2.cvtColor(work, cv2.COLOR_BGR2HSV)
+    lower = np.array([20, 20, 20])
+    upper = np.array([95, 255, 255])
+    mask = cv2.inRange(hsv, lower, upper)
+    kernel = np.ones((5, 5), np.uint8)
     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=2)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=1)
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     clean_mask = np.zeros_like(mask)
     if len(contours) > 0:
         largest = max(contours, key=cv2.contourArea)
         cv2.drawContours(clean_mask, [largest], -1, 255, -1)
+    clean_mask = cv2.GaussianBlur(clean_mask, (7, 7), 0)
+    _, clean_mask = cv2.threshold(clean_mask, 127, 255, cv2.THRESH_BINARY)
     return clean_mask
 
 def preprocess_camera_leaf(img):
@@ -366,20 +367,6 @@ def preprocess_camera_leaf(img):
         scale = 250 / max(h_c, w_c)
         new_w, new_h = int(w_c * scale), int(h_c * scale)
         leaf_crop = cv2.resize(leaf_crop, (new_w, new_h), interpolation=cv2.INTER_CUBIC)
-
-        # Penanganan khusus daun berukuran kecil
-        if new_w < 180 or new_h < 180:
-            extra_scale = 1.25
-            new_w = int(new_w * extra_scale)
-            new_h = int(new_h * extra_scale)
-
-            if new_w > 256 or new_h > 256:
-                ratio = min(256 / new_w, 256 / new_h) * 0.98
-                new_w = int(new_w * ratio)
-                new_h = int(new_h * ratio)
-
-            leaf_crop = cv2.resize(leaf_crop, (new_w, new_h), interpolation=cv2.INTER_CUBIC)
-            
         final_img = np.ones((256, 256, 3), dtype=np.uint8) * 255
         x_off, y_off = (256 - leaf_crop.shape[1]) // 2, (256 - leaf_crop.shape[0]) // 2
         final_img[y_off:y_off + leaf_crop.shape[0], x_off:x_off + leaf_crop.shape[1]] = leaf_crop
@@ -393,7 +380,7 @@ def preprocess_camera_leaf(img):
 def to_rgb_input(img):
     img = cv2.resize(img, CONFIG["IMG_SIZE"], interpolation=cv2.INTER_CUBIC)
     mask = get_leaf_mask(img)
-    img[mask == 0] = [255, 255, 255]
+    img[mask == 0] = [240, 240, 240]
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB).astype(np.float32)
     mean = np.array([0.485, 0.456, 0.406]) * 255
     std = np.array([0.229, 0.224, 0.225]) * 255
@@ -470,7 +457,7 @@ html, body, [class*="css"] {
     background-color: #ffffff;
     border: 1px solid #e2e8f0;
     border-radius: 16px;
-    padding: 20px;
+    padding: 24px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
     margin-bottom: 20px;
 }
@@ -599,8 +586,8 @@ logo_b64 = load_base64("images/diaherb_logo.png")
 
 if logo_b64:
     st.markdown(f"""
-        <div style="display:flex; align-items:center; justify-content:space-between; padding:0px 0; margin-bottom:10px;">
-            <img src="data:image/png;base64,{logo_b64}" style="height:100px; width:auto;">
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid #e2e8f0; margin-bottom:30px;">
+            <img src="data:image/png;base64,{logo_b64}" style="height:70px; width:auto;">
             <span style="font-size:13px; font-weight:600; color:#047857; background:#ecfdf5; padding:6px 14px; border-radius:10px; border:1px solid #a7f3d0;">
                 LeafNet Dual-Branch Model • Tugas Akhir 211401034
             </span>
@@ -608,7 +595,7 @@ if logo_b64:
     """, unsafe_allow_html=True)
 else:
     st.markdown("""
-        <div style="padding:10px 0; border-bottom:1px solid #e2e8f0; margin-bottom:10px;">
+        <div style="padding:10px 0; border-bottom:1px solid #e2e8f0; margin-bottom:30px;">
             <h1 style="font-family:'Playfair Display', serif; color:#065f46; margin:0; font-size:36px;">DiaHerb 🌿</h1>
             <p style="color:#64748b; margin:0; font-size:14px;">Sistem Identifikasi Daun Herbal Antidiabetes Berbasis LeafNet</p>
         </div>
@@ -629,8 +616,9 @@ if st.session_state.page == "upload":
             <h1 style="font-family:'Playfair Display', serif; font-size: 34px; font-weight: 700; margin-top: 2px; margin-bottom: 12px; color: #f0fdf4;">
                 Sistem Identifikasi Daun Herbal Antidiabetes
             </h1>
-            <p style="font-size: 16px; line-height: 1.7; color: #e2e8f0; margin: 0; max-width: 1200px;">
-                Sistem ini dikembangkan untuk mengidentifikasi spesies tanaman herbal antidiabetes berdasarkan citra daun dengan memanfaatkan kecerdasan buatan <b>Deep Learning DenseNet201 dan LeafNet</b> yang menggabungkan ekstraksi jaringan tulang daun (<i>Vein Branch</i>) dan fitur visual bentuk, warna dan tekstur (<i>RGB Branch</i>).
+            <p style="font-size: 16px; line-height: 1.7; color: #e2e8f0; margin: 0; max-width: 900px;">
+                DiaHerb dikembangkan untuk mengidentifikasi spesies tanaman herbal antidiabetes berdasarkan citra daun. 
+                Sistem ini memanfaatkan kecerdasan buatan <b>Deep Learning LeafNet</b> yang menggabungkan ekstraksi jaringan tulang daun (<i>Vein Branch</i>) dan fitur visual warna (<i>RGB Branch</i> dengan DenseNet201).
             </p>
         </div>
     """, unsafe_allow_html=True)
