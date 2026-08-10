@@ -611,13 +611,12 @@ if st.session_state.page == "upload":
 
     # Hero Banner
     st.markdown("""
-        <div style="background: linear-gradient(135deg, #064e3b 0%, #0d9488 100%); padding: 36px; border-radius: 20px; color: white; margin-bottom: 30px;">
+        <div style="background: linear-gradient(135deg, #064e3b 0%, #0d9488 100%); padding: 24px; border-radius: 20px; color: white; margin-bottom: 30px;">
             <h1 style="font-family:'Playfair Display', serif; font-size: 34px; font-weight: 700; margin-top: 2px; margin-bottom: 12px; color: #f0fdf4;">
                 Sistem Identifikasi Daun Herbal Antidiabetes
             </h1>
             <p style="font-size: 16px; line-height: 1.7; color: #e2e8f0; margin: 0; max-width: 900px;">
-                DiaHerb dikembangkan untuk mengidentifikasi spesies tanaman herbal antidiabetes berdasarkan citra daun. 
-                Sistem ini memanfaatkan kecerdasan buatan <b>Deep Learning LeafNet</b> yang menggabungkan ekstraksi jaringan tulang daun (<i>Vein Branch</i>) dan fitur visual warna (<i>RGB Branch</i> dengan DenseNet201).
+                Sistem ini dikembangkan untuk mengidentifikasi spesies tanaman herbal antidiabetes berdasarkan citra daun dengan memanfaatkan kecerdasan buatan <b>Deep Learning DenseNet201 dan LeafNet</b> yang menggabungkan ekstraksi jaringan tulang daun (<i>Vein Branch</i>) dan fitur visual bentuk, warna dan tekstur (<i>RGB Branch</i>).
             </p>
         </div>
     """, unsafe_allow_html=True)
