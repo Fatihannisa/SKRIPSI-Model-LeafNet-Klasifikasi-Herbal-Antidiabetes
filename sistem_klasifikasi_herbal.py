@@ -51,10 +51,10 @@ LABELS = [
 
 CONFIG = {
     "IMG_SIZE": (256, 256),
-    "TARGET_BRIGHTNESS": 145,
-    "CLAHE_CLIP": 3.5,
+    "TARGET_BRIGHTNESS": 110,
+    "CLAHE_CLIP": 4.0,
     "CLAHE_TILE": (4, 4),
-    "VEIN_STRENGTH": 1.2
+    "VEIN_STRENGTH": 0.4
 }
 
 # =========================================================
@@ -319,22 +319,21 @@ def _sharpen_veins(img):
     sharp = cv2.addWeighted(img, 1 + s, blurred, -s, 0)
     return np.clip(sharp, 0, 255).astype(np.uint8)
 
+def _clean_background(img, threshold=230):
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    img[gray > threshold] = [255,255,255]
+    return img
+
 def get_leaf_mask(img):
-    work = img.copy()
-    hsv = cv2.cvtColor(work, cv2.COLOR_BGR2HSV)
-    lower = np.array([20, 20, 20])
-    upper = np.array([95, 255, 255])
-    mask = cv2.inRange(hsv, lower, upper)
-    kernel = np.ones((5, 5), np.uint8)
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    _, mask = cv2.threshold(gray, 240, 255, cv2.THRESH_BINARY_INV)
+    kernel = np.ones((3,3), np.uint8)
     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=2)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=1)
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     clean_mask = np.zeros_like(mask)
     if len(contours) > 0:
         largest = max(contours, key=cv2.contourArea)
         cv2.drawContours(clean_mask, [largest], -1, 255, -1)
-    clean_mask = cv2.GaussianBlur(clean_mask, (7, 7), 0)
-    _, clean_mask = cv2.threshold(clean_mask, 127, 255, cv2.THRESH_BINARY)
     return clean_mask
 
 def preprocess_camera_leaf(img):
@@ -586,7 +585,7 @@ logo_b64 = load_base64("images/diaherb_logo.png")
 
 if logo_b64:
     st.markdown(f"""
-        <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid #e2e8f0; margin-bottom:30px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 0; margin-bottom:30px;">
             <img src="data:image/png;base64,{logo_b64}" style="height:70px; width:auto;">
             <span style="font-size:13px; font-weight:600; color:#047857; background:#ecfdf5; padding:6px 14px; border-radius:10px; border:1px solid #a7f3d0;">
                 LeafNet Dual-Branch Model • Tugas Akhir 211401034
