@@ -456,7 +456,7 @@ html, body, [class*="css"] {
     background-color: #ffffff;
     border: 1px solid #e2e8f0;
     border-radius: 16px;
-    padding: 24px;
+    padding: 20px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
     margin-bottom: 20px;
 }
@@ -586,7 +586,7 @@ logo_b64 = load_base64("images/diaherb_logo.png")
 if logo_b64:
     st.markdown(f"""
         <div style="display:flex; align-items:center; justify-content:space-between; padding:0px 0; margin-bottom:10px;">
-            <img src="data:image/png;base64,{logo_b64}" style="height:70px; width:auto;">
+            <img src="data:image/png;base64,{logo_b64}" style="height:100px; width:auto;">
             <span style="font-size:13px; font-weight:600; color:#047857; background:#ecfdf5; padding:6px 14px; border-radius:10px; border:1px solid #a7f3d0;">
                 LeafNet Dual-Branch Model • Tugas Akhir 211401034
             </span>
